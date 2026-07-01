@@ -1,0 +1,29 @@
+name = "driver-signal"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "driver_signal_db"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[[kv_namespaces]]
+binding = "IMAGES_KV"
+id = "REPLACE_WITH_IMAGES_KV_NAMESPACE_ID"
+
+[vars]
+# Salt used to hash user-identifying material (e.g. IP + UA) into an
+# anonymous, non-reversible user_hash. Set a real secret in production via
+# `wrangler secret put USER_HASH_SALT`.
+USER_HASH_SALT = "dev-only-change-me"

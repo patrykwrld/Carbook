@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Driver Signal</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card: #171a21;
+    --border: #262b36;
+    --text: #e7e9ee;
+    --muted: #8b93a3;
+    --accent: #4f8cff;
+    --good: #34c77b;
+    --bad: #e5484d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .app { max-width: 480px; margin: 0 auto; padding: 16px; min-height: 100vh; }
+  h1 { font-size: 20px; margin: 8px 0 16px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tab {
+    flex: 1; padding: 10px; text-align: center; border-radius: 10px;
+    background: var(--card); border: 1px solid var(--border); color: var(--muted);
+    font-size: 14px; cursor: pointer;
+  }
+  .tab.active { color: var(--text); border-color: var(--accent); }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 14px 0 6px; }
+  input[type=text], textarea {
+    width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); font-size: 16px;
+  }
+  textarea { resize: vertical; min-height: 70px; }
+  .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+  .type-btn {
+    padding: 12px 8px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); font-size: 13px; text-align: center; cursor: pointer;
+  }
+  .type-btn.selected { border-color: var(--accent); background: #1b2333; }
+  button.primary {
+    width: 100%; margin-top: 18px; padding: 14px; border-radius: 10px; border: none;
+    background: var(--accent); color: #fff; font-size: 16px; font-weight: 600; cursor: pointer;
+  }
+  button.primary:disabled { opacity: 0.5; }
+  .status { margin-top: 12px; font-size: 14px; text-align: center; min-height: 20px; }
+  .status.error { color: var(--bad); }
+  .status.ok { color: var(--good); }
+  .result-card {
+    margin-top: 18px; padding: 16px; border-radius: 12px; background: var(--card);
+    border: 1px solid var(--border); display: none;
+  }
+  .result-card.visible { display: block; }
+  .score-row { display: flex; align-items: baseline; gap: 10px; }
+  .score { font-size: 40px; font-weight: 700; }
+  .trend { font-size: 15px; padding: 4px 10px; border-radius: 999px; background: #1b2333; }
+  .trend.up { color: var(--good); }
+  .trend.down { color: var(--bad); }
+  .trend.stable { color: var(--muted); }
+  .meta { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .ratio-bars { margin-top: 14px; }
+  .ratio-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; }
+  .ratio-label { width: 130px; color: var(--muted); flex-shrink: 0; }
+  .ratio-track { flex: 1; height: 8px; background: #262b36; border-radius: 4px; overflow: hidden; }
+  .ratio-fill { height: 100%; background: var(--accent); }
+  .ratio-val { width: 36px; text-align: right; color: var(--muted); }
+  .file-input { margin-top: 6px; font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Driver Signal</h1>
+  <div class="tabs">
+    <div class="tab active" data-tab="report">Report</div>
+    <div class="tab" data-tab="search">Search</div>
+  </div>
+
+  <div class="panel active" id="panel-report">
+    <label for="report-plate">Plate</label>
+    <input type="text" id="report-plate" placeholder="e.g. ABC1234" autocapitalize="characters" autocomplete="off" />
+
+    <label>Feedback</label>
+    <div class="type-grid" id="type-grid">
+      <div class="type-btn" data-type="LET_MERGE">Let Merge</div>
+      <div class="type-btn" data-type="SAFE_DRIVING">Safe Driving</div>
+      <div class="type-btn" data-type="AGGRESSIVE_DRIVING">Aggressive Driving</div>
+      <div class="type-btn" data-type="PHONE_USE">Phone Use</div>
+    </div>
+
+    <label for="report-comment">Comment (optional)</label>
+    <textarea id="report-comment" maxlength="500" placeholder="What happened?"></textarea>
+
+    <label for="report-image">Photo (optional)</label>
+    <input class="file-input" type="file" id="report-image" accept="image/jpeg,image/png,image/webp" />
+
+    <button class="primary" id="submit-btn">Submit</button>
+    <div class="status" id="report-status"></div>
+  </div>
+
+  <div class="panel" id="panel-search">
+    <label for="search-plate">Plate</label>
+    <input type="text" id="search-plate" placeholder="e.g. ABC1234" autocapitalize="characters" autocomplete="off" />
+    <button class="primary" id="search-btn">Search</button>
+    <div class="status" id="search-status"></div>
+
+    <div class="result-card" id="result-card">
+      <div class="score-row">
+        <div class="score" id="result-score">--</div>
+        <div class="trend" id="result-trend">stable</div>
+      </div>
+      <div class="meta" id="result-meta"></div>
+      <div class="ratio-bars" id="result-ratios"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TYPE_LABELS = {
+  LET_MERGE: 'Let Merge',
+  SAFE_DRIVING: 'Safe Driving',
+  AGGRESSIVE_DRIVING: 'Aggressive Driving',
+  PHONE_USE: 'Phone Use',
+};
+
+document.querySelectorAll('.tab').forEach((tab) => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach((p) => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+let selectedType = null;
+document.querySelectorAll('.type-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.type-btn').forEach((b) => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedType = btn.dataset.type;
+  });
+});
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function setStatus(el, message, kind) {
+  el.textContent = message;
+  el.className = 'status' + (kind ? ' ' + kind : '');
+}
+
+document.getElementById('submit-btn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('report-status');
+  const plate = document.getElementById('report-plate').value.trim();
+  const comment = document.getElementById('report-comment').value.trim();
+  const imageFile = document.getElementById('report-image').files[0];
+
+  if (!plate) return setStatus(statusEl, 'Enter a plate.', 'error');
+  if (!selectedType) return setStatus(statusEl, 'Select a feedback type.', 'error');
+
+  const payload = { plate, feedbackType: selectedType };
+  if (comment) payload.comment = comment;
+  if (imageFile) {
+    payload.imageBase64 = await fileToBase64(imageFile);
+    payload.imageContentType = imageFile.type;
+  }
+
+  setStatus(statusEl, 'Submitting...', '');
+  try {
+    const res = await fetch('/api/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      setStatus(statusEl, 'Thanks — feedback recorded.', 'ok');
+      document.getElementById('report-comment').value = '';
+      document.getElementById('report-image').value = '';
+    } else {
+      setStatus(statusEl, describeError(data.error), 'error');
+    }
+  } catch (err) {
+    setStatus(statusEl, 'Network error. Try again.', 'error');
+  }
+});
+
+function describeError(code) {
+  switch (code) {
+    case 'DAILY_LIMIT_EXCEEDED': return 'Daily submission limit reached.';
+    case 'DUPLICATE_SUBMISSION': return 'You already reported this today.';
+    case 'PLATE_TARGETING_LIMIT_EXCEEDED': return 'Too many reports for this plate today.';
+    case 'INVALID_PLATE': return 'Invalid plate format.';
+    case 'INVALID_IMAGE': return 'Image could not be uploaded.';
+    default: return 'Could not submit feedback.';
+  }
+}
+
+document.getElementById('search-btn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('search-status');
+  const resultCard = document.getElementById('result-card');
+  const plate = document.getElementById('search-plate').value.trim();
+  resultCard.classList.remove('visible');
+  if (!plate) return setStatus(statusEl, 'Enter a plate.', 'error');
+
+  setStatus(statusEl, 'Searching...', '');
+  try {
+    const res = await fetch('/api/plate/' + encodeURIComponent(plate));
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      setStatus(statusEl, 'Invalid plate.', 'error');
+      return;
+    }
+    if (!data.visible) {
+      setStatus(statusEl, 'Not enough data yet for this plate.', '');
+      return;
+    }
+    setStatus(statusEl, '', '');
+    renderResult(data);
+    resultCard.classList.add('visible');
+  } catch (err) {
+    setStatus(statusEl, 'Network error. Try again.', 'error');
+  }
+});
+
+function renderResult(data) {
+  document.getElementById('result-score').textContent = data.score;
+  const trendEl = document.getElementById('result-trend');
+  trendEl.textContent = data.trend;
+  trendEl.className = 'trend ' + data.trend;
+  document.getElementById('result-meta').textContent =
+    data.uniqueUsers + ' reporters · ' + data.distinctDays + ' days · ' + data.totalEvents + ' reports (30d)';
+
+  const ratiosEl = document.getElementById('result-ratios');
+  ratiosEl.innerHTML = '';
+  Object.entries(data.ratios).forEach(([type, ratio]) => {
+    const pct = Math.round(ratio * 100);
+    const row = document.createElement('div');
+    row.className = 'ratio-row';
+    row.innerHTML =
+      '<div class="ratio-label">' + TYPE_LABELS[type] + '</div>' +
+      '<div class="ratio-track"><div class="ratio-fill" style="width:' + pct + '%"></div></div>' +
+      '<div class="ratio-val">' + pct + '%</div>';
+    ratiosEl.appendChild(row);
+  });
+}
+</script>
+</body>
+</html>
