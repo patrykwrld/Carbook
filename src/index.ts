@@ -1,10 +1,17 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { handleClaim } from './routes/claim';
 import { handleGetPlate } from './routes/plate';
 import { handleSubmit } from './routes/submit';
 import type { Env } from './types';
 
 const app = new Hono<{ Bindings: Env }>();
+
+// The frontend may be hosted on a different origin (e.g. Vercel) than this
+// Worker. There's no cookie/session auth to protect, so open CORS on the
+// API routes is safe — it doesn't weaken the KV/D1 abuse controls, which
+// apply regardless of caller origin.
+app.use('/api/*', cors({ origin: '*', allowMethods: ['GET', 'POST'] }));
 
 app.post('/api/submit', handleSubmit);
 app.get('/api/plate/:plate', handleGetPlate);

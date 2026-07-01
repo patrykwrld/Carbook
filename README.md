@@ -89,3 +89,28 @@ npm run typecheck
 - `POST /api/submit` — `{ plate, feedbackType, comment?, imageBase64?, imageContentType? }`
 - `GET /api/plate/:plate` — aggregate result only (no raw events)
 - `POST /api/claim` — placeholder, validates input, persists nothing, no auth yet
+
+## Deploying the frontend to Vercel
+
+The API (Workers + D1 + KV) can only run on Cloudflare — Vercel has no
+equivalent for D1 or Workers KV. What Vercel *can* host is the static
+frontend in `public/`, calling the Cloudflare Worker as a separate API
+origin. `vercel.json` is already configured to serve `public/` as-is with
+no build step, and `src/index.ts` enables permissive CORS on `/api/*` so
+the Worker accepts requests from the Vercel domain.
+
+1. Deploy the Worker first (see "Deploying to Cloudflare" above) and note
+   its URL, e.g. `https://driver-signal.<subdomain>.workers.dev`.
+2. Point the frontend at it by editing `public/config.js`:
+   ```js
+   window.DRIVER_SIGNAL_API_BASE = 'https://driver-signal.<subdomain>.workers.dev';
+   ```
+3. Deploy to Vercel:
+   ```bash
+   npx vercel login       # one-time, interactive
+   npx vercel --prod
+   ```
+
+If you'd rather keep everything on Cloudflare, skip this section — the
+Worker already serves `public/` itself via the `ASSETS` binding, and
+`config.js` defaults to same-origin requests.
