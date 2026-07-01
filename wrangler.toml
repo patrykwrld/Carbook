@@ -11,19 +11,19 @@ run_worker_first = true
 [[d1_databases]]
 binding = "DB"
 database_name = "driver_signal_db"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "51c14e60-55bd-4497-a6d8-e53a6e6c68f8"
 migrations_dir = "migrations"
 
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "a160a7c7acea41efa7e32c7ef826d356"
 
 [[kv_namespaces]]
 binding = "IMAGES_KV"
-id = "REPLACE_WITH_IMAGES_KV_NAMESPACE_ID"
+id = "d1b6d1566f464977a87ae657768b3124"
 
-[vars]
-# Salt used to hash user-identifying material (e.g. IP + UA) into an
-# anonymous, non-reversible user_hash. Set a real secret in production via
-# `wrangler secret put USER_HASH_SALT`.
-USER_HASH_SALT = "dev-only-change-me"
+# USER_HASH_SALT is intentionally not defined here as a [vars] entry: it
+# salts the anonymous user hash, and a salt committed in plaintext would
+# make that hash easier to precompute against. Set it as a Worker secret
+# instead: `wrangler secret put USER_HASH_SALT` (or via CI, see README).
+# For local dev, put it in a git-ignored `.dev.vars` file.
