@@ -41,8 +41,13 @@ jobs:
         with:
           node-version: 22
       - run: npm install -g vercel
+      - name: Ensure Vercel project exists
+        run: vercel project add carbook --token="$VERCEL_TOKEN" || true
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       - name: Deploy to Vercel
-        run: vercel deploy --prod --yes --token="$VERCEL_TOKEN"
+        run: vercel deploy --prod --yes --project carbook --token="$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
