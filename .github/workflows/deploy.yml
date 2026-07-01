@@ -1,4 +1,4 @@
-name: Deploy Driver Signal
+name: Deploy Carbook
 
 on:
   push:

@@ -1,28 +1,37 @@
-export type FeedbackType =
-  | 'LET_MERGE'
+export type CommentTag =
   | 'SAFE_DRIVING'
   | 'AGGRESSIVE_DRIVING'
-  | 'PHONE_USE';
+  | 'LET_MERGE'
+  | 'PHONE_USE'
+  | 'OTHER';
 
-export const FEEDBACK_TYPES: readonly FeedbackType[] = [
-  'LET_MERGE',
+export const COMMENT_TAGS: readonly CommentTag[] = [
   'SAFE_DRIVING',
   'AGGRESSIVE_DRIVING',
+  'LET_MERGE',
   'PHONE_USE',
+  'OTHER',
 ];
 
-export const POSITIVE_TYPES: readonly FeedbackType[] = ['LET_MERGE', 'SAFE_DRIVING'];
-export const NEGATIVE_TYPES: readonly FeedbackType[] = ['AGGRESSIVE_DRIVING', 'PHONE_USE'];
-
-export interface FeedbackEventRow {
+export interface CommentRow {
   id: number;
   plate: string;
-  feedback_type: FeedbackType;
-  comment: string | null;
+  author_name: string | null;
+  body: string;
+  tag: CommentTag | null;
   image_key: string | null;
   user_hash: string;
+  flag_count: number;
+  hidden: number;
   created_at: number;
   created_day: string;
+}
+
+export interface PlateRow {
+  plate: string;
+  first_seen_at: number;
+  last_seen_at: number;
+  comment_count: number;
 }
 
 export interface Env {
@@ -31,18 +40,4 @@ export interface Env {
   IMAGES_KV: KVNamespace;
   ASSETS: Fetcher;
   USER_HASH_SALT: string;
-}
-
-export type Trend = 'up' | 'down' | 'stable';
-
-export interface PlateResult {
-  plate: string;
-  visible: boolean;
-  reason?: string;
-  score?: number;
-  trend?: Trend;
-  totalEvents?: number;
-  uniqueUsers?: number;
-  distinctDays?: number;
-  ratios?: Record<FeedbackType, number>;
 }

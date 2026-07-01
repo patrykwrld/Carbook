@@ -1,49 +1,50 @@
-# Driver Signal
+# Carbook
 
-A mobile-first, structured, aggregated driver feedback system built entirely
-on Cloudflare (Workers + Hono, D1, KV). Not a social platform — no identities,
-no raw report visibility, no free-form feedback categories.
+A website where people comment on specific vehicle license plates — built
+on Cloudflare (Workers + Hono, D1, KV).
 
-## Product rules (enforced in code, not just docs)
+## Features
 
-- Feedback types are limited to `LET_MERGE`, `SAFE_DRIVING`, `AGGRESSIVE_DRIVING`, `PHONE_USE`.
-- No identity linking: the only "user" concept stored is a one-way SHA-256
-  hash of IP + User-Agent + server salt (`src/hash.ts`), used solely for
-  abuse control.
-- No raw report visibility: `GET /api/plate/:plate` never returns individual
-  comments, images, or events — only the computed aggregate (`src/aggregate.ts`).
-- A plate is only visible once it has ≥5 unique reporters AND ≥2 distinct
-  report days in the trailing 30 days (`VISIBILITY_MIN_UNIQUE_USERS` /
-  `VISIBILITY_MIN_DISTINCT_DAYS` in `src/aggregate.ts`).
-- Abuse controls (`src/abuse.ts`, KV-backed with 24h TTL):
-  - Max 5 submissions per user per day.
-  - Duplicate (user + plate + feedback type) blocked for 24h — enforced in
-    KV up front, and backstopped by a D1 unique index in case of races.
-  - Max 2 submissions per user against the same plate per day, to blunt
-    single-plate targeting/spam.
+- Search any plate and read/post comments about it
+- Optional tag per comment (Safe Driving, Aggressive Driving, Let Merge,
+  Phone Use, Other) for a quick at-a-glance signal
+- Optional display name and photo per comment
+- Homepage lists recently active plates
+- Anonymous by design: no accounts, no login. Comments carry only an
+  optional self-chosen display name — no other identity is stored or shown
+- Abuse controls: per-commenter daily cap, per-plate-per-day cap (blunts
+  single-plate pile-ons), and a minimum interval between comments, all
+  enforced in KV
+- Community moderation: anyone can report a comment; it's auto-hidden
+  once enough distinct people report it (dedup'd so one person can't force
+  a hide by reporting repeatedly)
 
 ## Stack
 
 - Cloudflare Workers (API), routed with Hono
-- D1 for `plates` and `feedback_events`
+- D1 for `plates` and `comments`
 - KV for rate limiting/dedupe counters (`RATE_LIMIT_KV`) and image blobs (`IMAGES_KV`)
-- Static frontend served via Workers Assets (`public/`)
+- Static frontend served via Workers Assets (`public/`) — vanilla JS, hash-based routing, no build step
 
 ## Project layout
 
 ```
 src/
-  index.ts        Hono app: API routes + static asset fallback
-  routes/         submit / plate / claim handlers
-  aggregate.ts    score, trend, visibility (pure, unit-tested)
-  abuse.ts        KV rate-limit / dedupe / anti-targeting (pure, unit-tested)
-  db.ts           D1 queries
-  plate.ts        plate normalization/validation
-  hash.ts         anonymous user hashing
-  image.ts        image validation + KV storage
-migrations/       D1 schema
-public/           static frontend (submit + search flows)
-test/             vitest unit tests
+  index.ts          Hono app: API routes + static asset fallback
+  routes/
+    comments.ts     create comment / list a plate's comments
+    flag.ts         report a comment (auto-hide past a flag threshold)
+    trending.ts     recently active plates for the homepage
+    image.ts        serve uploaded comment images from KV
+  abuse.ts          KV rate-limit / anti-targeting / flag dedupe (pure, unit-tested)
+  moderation.ts     comment/author validation + auto-hide threshold (pure, unit-tested)
+  db.ts             D1 queries
+  plate.ts          plate normalization/validation
+  hash.ts           anonymous commenter hashing (abuse control only)
+  image.ts          image validation + KV storage
+migrations/         D1 schema
+public/             static frontend (search, plate thread, comment form)
+test/               vitest unit tests
 ```
 
 ## Local development
@@ -58,31 +59,37 @@ npm run dev                      # wrangler dev, serves API + frontend on :8787
 ## Tests
 
 ```bash
-npm test         # vitest: aggregation, abuse control, plate validation
+npm test         # vitest: abuse control, moderation, plate validation
 npm run typecheck
 ```
 
+## API
+
+- `POST /api/comments` — `{ plate, body, tag?, authorName?, imageBase64?, imageContentType? }`
+- `GET /api/plate/:plate?limit=&before=` — plate's comment count + a page of comments (newest first, cursor pagination via `before`)
+- `GET /api/trending?limit=` — recently active plates
+- `POST /api/comments/:id/flag` — report a comment; auto-hides once the flag threshold is reached
+- `GET /api/image/:key` — serves an uploaded comment image
+
 ## Deploying to Cloudflare
 
-The D1 database (`driver_signal_db`) and both KV namespaces
-(`RATE_LIMIT_KV`, `IMAGES_KV`) are already provisioned in the target
-Cloudflare account, with real IDs committed in `wrangler.toml` and the
-schema from `migrations/0001_init.sql` already applied. To deploy fresh
-elsewhere, or to redeploy:
+The D1 database (`carbook_db`) and both KV namespaces (`RATE_LIMIT_KV`,
+`IMAGES_KV`) are already provisioned in the target Cloudflare account, with
+real IDs committed in `wrangler.toml` and the schema from
+`migrations/0001_init.sql` already applied. To deploy fresh elsewhere:
 
-1. If starting over, create the D1 database and KV namespaces and paste
-   the returned IDs into `wrangler.toml`:
+1. Create the D1 database and KV namespaces, then paste the returned IDs
+   into `wrangler.toml`:
    ```bash
-   npx wrangler d1 create driver_signal_db
+   npx wrangler d1 create carbook_db
    npx wrangler kv namespace create RATE_LIMIT_KV
    npx wrangler kv namespace create IMAGES_KV
    ```
-2. Apply the schema to the remote database (safe to re-run, all
-   statements are `IF NOT EXISTS`):
+2. Apply the schema (safe to re-run, all statements are `IF NOT EXISTS`):
    ```bash
    npm run db:migrate:remote
    ```
-3. Set the production secret for user hashing:
+3. Set the production secret for the anonymous commenter hash:
    ```bash
    npx wrangler secret put USER_HASH_SALT
    ```
@@ -91,57 +98,46 @@ elsewhere, or to redeploy:
    npm run deploy
    ```
 
-See "CI deploys" below to do all of this from GitHub Actions instead.
-
-## API
-
-- `POST /api/submit` — `{ plate, feedbackType, comment?, imageBase64?, imageContentType? }`
-- `GET /api/plate/:plate` — aggregate result only (no raw events)
-- `POST /api/claim` — placeholder, validates input, persists nothing, no auth yet
-
 ## Deploying the frontend to Vercel
 
-The API (Workers + D1 + KV) can only run on Cloudflare — Vercel has no
-equivalent for D1 or Workers KV. What Vercel *can* host is the static
-frontend in `public/`, calling the Cloudflare Worker as a separate API
-origin. `vercel.json` is already configured to serve `public/` as-is with
-no build step, and `src/index.ts` enables permissive CORS on `/api/*` so
-the Worker accepts requests from the Vercel domain.
+Vercel has no equivalent for D1 or Workers KV, so the API can only run on
+Cloudflare — but the static frontend in `public/` can be hosted on Vercel
+as a separate origin. `vercel.json` serves `public/` as-is with no build
+step, and `src/index.ts` enables CORS on `/api/*` so the Worker accepts
+requests from the Vercel domain.
 
-1. Deploy the Worker first (see "Deploying to Cloudflare" above) and note
-   its URL, e.g. `https://driver-signal.<subdomain>.workers.dev`.
-2. Point the frontend at it by editing `public/config.js`:
+1. Deploy the Worker first and note its URL, e.g.
+   `https://carbook.<subdomain>.workers.dev`.
+2. Point the frontend at it in `public/config.js`:
    ```js
-   window.DRIVER_SIGNAL_API_BASE = 'https://driver-signal.<subdomain>.workers.dev';
+   window.CARBOOK_API_BASE = 'https://carbook.<subdomain>.workers.dev';
    ```
-3. Deploy to Vercel:
+3. Deploy:
    ```bash
-   npx vercel login       # one-time, interactive
+   npx vercel login
    npx vercel --prod
    ```
 
-If you'd rather keep everything on Cloudflare, skip this section — the
-Worker already serves `public/` itself via the `ASSETS` binding, and
-`config.js` defaults to same-origin requests.
+If you'd rather keep everything on Cloudflare, skip this — the Worker
+already serves `public/` itself, and `config.js` defaults to same-origin.
 
 ## CI deploys (GitHub Actions)
 
-`.github/workflows/deploy.yml` deploys both halves on every push to
-`main`/`claude/driver-signal-mvp-1knsvs`, or on manual dispatch. It exists
-because this repo is developed in a network-restricted sandbox that can't
-reach `cloudflare.com` or `vercel.com` directly — GitHub's own runners can.
-
-Add these as **repository secrets** (Settings → Secrets and variables →
-Actions), not in the codebase:
+`.github/workflows/deploy.yml` deploys both halves on push, or on manual
+dispatch. Add these as **repository secrets** (Settings → Secrets and
+variables → Actions):
 
 - `CLOUDFLARE_API_TOKEN` — scoped to Workers Scripts:Edit, D1:Edit, Workers KV Storage:Edit
 - `CLOUDFLARE_ACCOUNT_ID` — only needed if the token has access to more than one account
-- `USER_HASH_SALT` — a random string; the workflow pushes it via `wrangler secret put` before each deploy (never stored in the repo)
+- `USER_HASH_SALT` — a random string; pushed via `wrangler secret put` before each deploy, never stored in the repo
 - `VERCEL_TOKEN`
-- `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` — populate after the first `vercel` deploy links a project (read from the generated `.vercel/project.json`, or `vercel project ls`)
+- `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` — populate after the first `vercel` deploy links a project
 
-The D1 database (`driver_signal_db`) and both KV namespaces
-(`RATE_LIMIT_KV`, `IMAGES_KV`) referenced in `wrangler.toml` are already
-provisioned in the target Cloudflare account with the schema applied —
-the workflow's migration step is idempotent (`CREATE ... IF NOT EXISTS`)
-and safe to re-run.
+## Notes on scope
+
+- No accounts/login — comments are anonymous by design. This keeps the
+  MVP small but also means a display name is just a free-text label, not
+  a verified identity.
+- Moderation is fully automated (report → auto-hide past a threshold).
+  There's no admin review queue or unhide path yet — that's the natural
+  next thing to add if abuse becomes an issue in practice.

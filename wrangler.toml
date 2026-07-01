@@ -1,4 +1,4 @@
-name = "driver-signal"
+name = "carbook"
 main = "src/index.ts"
 compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
@@ -10,20 +10,18 @@ run_worker_first = true
 
 [[d1_databases]]
 binding = "DB"
-database_name = "driver_signal_db"
-database_id = "51c14e60-55bd-4497-a6d8-e53a6e6c68f8"
+database_name = "carbook_db"
+database_id = "40043b05-231b-426b-bcf8-57a2fc771664"
 migrations_dir = "migrations"
 
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
-id = "a160a7c7acea41efa7e32c7ef826d356"
+id = "959acaeafb904de4a3fafcfff7bbc931"
 
 [[kv_namespaces]]
 binding = "IMAGES_KV"
-id = "d1b6d1566f464977a87ae657768b3124"
+id = "f6a831e390164837afbbcce7ffb8bae4"
 
-# USER_HASH_SALT is intentionally not defined here as a [vars] entry: it
-# salts the anonymous user hash, and a salt committed in plaintext would
-# make that hash easier to precompute against. Set it as a Worker secret
-# instead: `wrangler secret put USER_HASH_SALT` (or via CI, see README).
-# For local dev, put it in a git-ignored `.dev.vars` file.
+# USER_HASH_SALT salts the anonymous per-commenter rate-limit hash. Not
+# committed here in plaintext — set via `wrangler secret put USER_HASH_SALT`
+# (or CI secret, see README). For local dev, use a git-ignored `.dev.vars`.

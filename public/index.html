@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-<title>Driver Signal</title>
+<title>Carbook</title>
 <style>
   :root {
     --bg: #0f1115;
@@ -14,6 +14,7 @@
     --accent: #4f8cff;
     --good: #34c77b;
     --bad: #e5484d;
+    --warn: #e5a63d;
   }
   * { box-sizing: border-box; }
   body {
@@ -23,132 +24,265 @@
     color: var(--text);
     -webkit-tap-highlight-color: transparent;
   }
-  .app { max-width: 480px; margin: 0 auto; padding: 16px; min-height: 100vh; }
-  h1 { font-size: 20px; margin: 8px 0 16px; }
-  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
-  .tab {
-    flex: 1; padding: 10px; text-align: center; border-radius: 10px;
-    background: var(--card); border: 1px solid var(--border); color: var(--muted);
-    font-size: 14px; cursor: pointer;
-  }
-  .tab.active { color: var(--text); border-color: var(--accent); }
-  .panel { display: none; }
-  .panel.active { display: block; }
-  label { display: block; font-size: 13px; color: var(--muted); margin: 14px 0 6px; }
-  input[type=text], textarea {
+  .app { max-width: 560px; margin: 0 auto; padding: 16px; min-height: 100vh; }
+  a { color: var(--accent); text-decoration: none; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  h1 { font-size: 22px; margin: 0; cursor: pointer; }
+  h1 span { color: var(--accent); }
+  .search-row { display: flex; gap: 8px; margin-bottom: 20px; }
+  input[type=text], textarea, select {
     width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border);
     background: var(--card); color: var(--text); font-size: 16px;
   }
-  textarea { resize: vertical; min-height: 70px; }
-  .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
-  .type-btn {
-    padding: 12px 8px; border-radius: 10px; border: 1px solid var(--border);
-    background: var(--card); color: var(--text); font-size: 13px; text-align: center; cursor: pointer;
+  textarea { resize: vertical; min-height: 80px; }
+  .search-row input { flex: 1; }
+  button {
+    padding: 12px 16px; border-radius: 10px; border: none;
+    background: var(--accent); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
   }
-  .type-btn.selected { border-color: var(--accent); background: #1b2333; }
-  button.primary {
-    width: 100%; margin-top: 18px; padding: 14px; border-radius: 10px; border: none;
-    background: var(--accent); color: #fff; font-size: 16px; font-weight: 600; cursor: pointer;
-  }
-  button.primary:disabled { opacity: 0.5; }
-  .status { margin-top: 12px; font-size: 14px; text-align: center; min-height: 20px; }
+  button.secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .status { margin: 10px 0; font-size: 14px; }
   .status.error { color: var(--bad); }
   .status.ok { color: var(--good); }
-  .result-card {
-    margin-top: 18px; padding: 16px; border-radius: 12px; background: var(--card);
-    border: 1px solid var(--border); display: none;
+  section.card {
+    padding: 16px; border-radius: 12px; background: var(--card);
+    border: 1px solid var(--border); margin-bottom: 14px;
   }
-  .result-card.visible { display: block; }
-  .score-row { display: flex; align-items: baseline; gap: 10px; }
-  .score { font-size: 40px; font-weight: 700; }
-  .trend { font-size: 15px; padding: 4px 10px; border-radius: 999px; background: #1b2333; }
-  .trend.up { color: var(--good); }
-  .trend.down { color: var(--bad); }
-  .trend.stable { color: var(--muted); }
-  .meta { color: var(--muted); font-size: 13px; margin-top: 6px; }
-  .ratio-bars { margin-top: 14px; }
-  .ratio-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; }
-  .ratio-label { width: 130px; color: var(--muted); flex-shrink: 0; }
-  .ratio-track { flex: 1; height: 8px; background: #262b36; border-radius: 4px; overflow: hidden; }
-  .ratio-fill { height: 100%; background: var(--accent); }
-  .ratio-val { width: 36px; text-align: right; color: var(--muted); }
+  .plate-list-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer;
+  }
+  .plate-list-item:last-child { border-bottom: none; }
+  .plate-code { font-weight: 700; font-size: 16px; letter-spacing: 1px; }
+  .plate-meta { color: var(--muted); font-size: 13px; }
+  .plate-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .plate-header .plate-code { font-size: 26px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
+  .tag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+  .tag-btn {
+    padding: 10px 8px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-size: 13px; text-align: center; cursor: pointer;
+  }
+  .tag-btn.selected { border-color: var(--accent); background: #1b2333; }
+  .comment {
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+  }
+  .comment:last-child { border-bottom: none; }
+  .comment-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .comment-author { font-weight: 600; font-size: 14px; }
+  .comment-time { color: var(--muted); font-size: 12px; }
+  .comment-body { margin-top: 6px; font-size: 14px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
+  .comment-img { margin-top: 8px; max-width: 100%; border-radius: 8px; display: block; }
+  .comment-actions { margin-top: 6px; display: flex; gap: 10px; align-items: center; }
+  .badge {
+    display: inline-block; font-size: 11px; padding: 3px 8px; border-radius: 999px;
+    background: #1b2333; color: var(--muted);
+  }
+  .badge.SAFE_DRIVING { color: var(--good); }
+  .badge.AGGRESSIVE_DRIVING { color: var(--bad); }
+  .badge.PHONE_USE { color: var(--warn); }
+  .badge.LET_MERGE { color: var(--accent); }
+  .flag-btn { background: none; border: none; color: var(--muted); font-size: 12px; padding: 0; cursor: pointer; }
+  .flag-btn:hover { color: var(--bad); }
+  .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 20px 0; }
   .file-input { margin-top: 6px; font-size: 13px; color: var(--muted); }
+  .back-link { display: inline-block; margin-bottom: 12px; font-size: 14px; }
+  #load-more-wrap { text-align: center; margin-top: 10px; }
 </style>
 </head>
 <body>
 <div class="app">
-  <h1>Driver Signal</h1>
-  <div class="tabs">
-    <div class="tab active" data-tab="report">Report</div>
-    <div class="tab" data-tab="search">Search</div>
+  <header>
+    <h1 id="home-link">Car<span>book</span></h1>
+  </header>
+
+  <div class="search-row">
+    <input type="text" id="search-input" placeholder="Search a plate, e.g. ABC1234" autocapitalize="characters" autocomplete="off" />
+    <button id="search-btn">Search</button>
   </div>
 
-  <div class="panel active" id="panel-report">
-    <label for="report-plate">Plate</label>
-    <input type="text" id="report-plate" placeholder="e.g. ABC1234" autocapitalize="characters" autocomplete="off" />
-
-    <label>Feedback</label>
-    <div class="type-grid" id="type-grid">
-      <div class="type-btn" data-type="LET_MERGE">Let Merge</div>
-      <div class="type-btn" data-type="SAFE_DRIVING">Safe Driving</div>
-      <div class="type-btn" data-type="AGGRESSIVE_DRIVING">Aggressive Driving</div>
-      <div class="type-btn" data-type="PHONE_USE">Phone Use</div>
-    </div>
-
-    <label for="report-comment">Comment (optional)</label>
-    <textarea id="report-comment" maxlength="500" placeholder="What happened?"></textarea>
-
-    <label for="report-image">Photo (optional)</label>
-    <input class="file-input" type="file" id="report-image" accept="image/jpeg,image/png,image/webp" />
-
-    <button class="primary" id="submit-btn">Submit</button>
-    <div class="status" id="report-status"></div>
-  </div>
-
-  <div class="panel" id="panel-search">
-    <label for="search-plate">Plate</label>
-    <input type="text" id="search-plate" placeholder="e.g. ABC1234" autocapitalize="characters" autocomplete="off" />
-    <button class="primary" id="search-btn">Search</button>
-    <div class="status" id="search-status"></div>
-
-    <div class="result-card" id="result-card">
-      <div class="score-row">
-        <div class="score" id="result-score">--</div>
-        <div class="trend" id="result-trend">stable</div>
-      </div>
-      <div class="meta" id="result-meta"></div>
-      <div class="ratio-bars" id="result-ratios"></div>
-    </div>
-  </div>
+  <div id="view"></div>
 </div>
 
 <script src="config.js"></script>
 <script>
-const API_BASE = window.DRIVER_SIGNAL_API_BASE || '';
-const TYPE_LABELS = {
-  LET_MERGE: 'Let Merge',
+const API_BASE = window.CARBOOK_API_BASE || '';
+const TAG_LABELS = {
   SAFE_DRIVING: 'Safe Driving',
   AGGRESSIVE_DRIVING: 'Aggressive Driving',
+  LET_MERGE: 'Let Merge',
   PHONE_USE: 'Phone Use',
+  OTHER: 'Other',
 };
+const view = document.getElementById('view');
 
-document.querySelectorAll('.tab').forEach((tab) => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach((p) => p.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
-  });
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function timeAgo(ms) {
+  const seconds = Math.floor((Date.now() - ms) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return minutes + 'm ago';
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return hours + 'h ago';
+  const days = Math.floor(hours / 24);
+  return days + 'd ago';
+}
+
+function navigateHome() {
+  location.hash = '#/';
+}
+
+function navigatePlate(plate) {
+  location.hash = '#/plate/' + encodeURIComponent(plate);
+}
+
+document.getElementById('home-link').addEventListener('click', navigateHome);
+document.getElementById('search-btn').addEventListener('click', () => {
+  const plate = document.getElementById('search-input').value.trim();
+  if (plate) navigatePlate(plate);
+});
+document.getElementById('search-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('search-btn').click();
 });
 
-let selectedType = null;
-document.querySelectorAll('.type-btn').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.type-btn').forEach((b) => b.classList.remove('selected'));
-    btn.classList.add('selected');
-    selectedType = btn.dataset.type;
+async function api(path, options) {
+  const res = await fetch(API_BASE + path, options);
+  const data = await res.json();
+  return { ok: res.ok && data.ok, status: res.status, data };
+}
+
+function imageUrl(imageKey) {
+  return API_BASE + '/api/image/' + encodeURIComponent(imageKey);
+}
+
+function renderComment(c) {
+  const author = c.authorName ? escapeHtml(c.authorName) : 'Anonymous';
+  const tagBadge = c.tag ? '<span class="badge ' + c.tag + '">' + TAG_LABELS[c.tag] + '</span>' : '';
+  const img = c.imageKey ? '<img class="comment-img" src="' + imageUrl(c.imageKey) + '" loading="lazy" />' : '';
+  return (
+    '<div class="comment" data-id="' + c.id + '">' +
+      '<div class="comment-top">' +
+        '<span class="comment-author">' + author + ' ' + tagBadge + '</span>' +
+        '<span class="comment-time">' + timeAgo(c.createdAt) + '</span>' +
+      '</div>' +
+      '<div class="comment-body">' + escapeHtml(c.body) + '</div>' +
+      img +
+      '<div class="comment-actions"><button class="flag-btn" data-flag="' + c.id + '">Report</button></div>' +
+    '</div>'
+  );
+}
+
+async function renderHome() {
+  view.innerHTML = '<section class="card"><h3 style="margin-top:0">Recently active plates</h3><div id="trending-list">Loading…</div></section>';
+  const { ok, data } = await api('/api/trending');
+  const list = document.getElementById('trending-list');
+  if (!ok) { list.innerHTML = '<div class="empty">Could not load plates.</div>'; return; }
+  if (data.plates.length === 0) { list.innerHTML = '<div class="empty">No plates yet. Search one to start the conversation.</div>'; return; }
+  list.innerHTML = data.plates.map((p) =>
+    '<div class="plate-list-item" data-plate="' + escapeHtml(p.plate) + '">' +
+      '<span class="plate-code">' + escapeHtml(p.plate) + '</span>' +
+      '<span class="plate-meta">' + p.commentCount + ' comment' + (p.commentCount === 1 ? '' : 's') + '</span>' +
+    '</div>'
+  ).join('');
+  list.querySelectorAll('.plate-list-item').forEach((el) => {
+    el.addEventListener('click', () => navigatePlate(el.dataset.plate));
   });
-});
+}
+
+let selectedTag = null;
+let currentPlate = null;
+let nextBefore = null;
+
+async function renderPlate(plate) {
+  currentPlate = plate;
+  selectedTag = null;
+  view.innerHTML =
+    '<a class="back-link" href="#/">&larr; All plates</a>' +
+    '<div class="plate-header"><span class="plate-code">' + escapeHtml(plate) + '</span></div>' +
+    '<div class="plate-meta" id="plate-meta" style="margin-bottom:14px">Loading…</div>' +
+    '<section class="card">' +
+      '<h3 style="margin-top:0">Add a comment</h3>' +
+      '<label for="c-body">Comment</label>' +
+      '<textarea id="c-body" maxlength="1000" placeholder="What happened with this driver?"></textarea>' +
+      '<label>Tag (optional)</label>' +
+      '<div class="tag-grid" id="tag-grid">' +
+        Object.keys(TAG_LABELS).map((t) => '<div class="tag-btn" data-tag="' + t + '">' + TAG_LABELS[t] + '</div>').join('') +
+      '</div>' +
+      '<label for="c-name">Your name (optional)</label>' +
+      '<input type="text" id="c-name" maxlength="40" placeholder="Anonymous" />' +
+      '<label for="c-image">Photo (optional)</label>' +
+      '<input class="file-input" type="file" id="c-image" accept="image/jpeg,image/png,image/webp" />' +
+      '<div style="margin-top:14px"><button id="c-submit" style="width:100%">Post comment</button></div>' +
+      '<div class="status" id="c-status"></div>' +
+    '</section>' +
+    '<section class="card"><h3 style="margin-top:0">Comments</h3><div id="comment-list">Loading…</div>' +
+      '<div id="load-more-wrap"></div>' +
+    '</section>';
+
+  document.getElementById('tag-grid').querySelectorAll('.tag-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const isSame = btn.classList.contains('selected');
+      document.querySelectorAll('#tag-grid .tag-btn').forEach((b) => b.classList.remove('selected'));
+      selectedTag = isSame ? null : btn.dataset.tag;
+      if (!isSame) btn.classList.add('selected');
+    });
+  });
+
+  document.getElementById('c-submit').addEventListener('click', submitComment);
+
+  nextBefore = null;
+  await loadPlateSummary(plate);
+  await loadComments(plate, false);
+}
+
+async function loadPlateSummary(plate) {
+  const { ok, data } = await api('/api/plate/' + encodeURIComponent(plate));
+  const meta = document.getElementById('plate-meta');
+  if (!meta) return;
+  if (!ok) { meta.textContent = 'Invalid plate.'; return; }
+  meta.textContent = data.commentCount + ' comment' + (data.commentCount === 1 ? '' : 's');
+}
+
+async function loadComments(plate, append) {
+  const listEl = document.getElementById('comment-list');
+  const loadMoreWrap = document.getElementById('load-more-wrap');
+  let url = '/api/plate/' + encodeURIComponent(plate) + '?limit=20';
+  if (append && nextBefore) url += '&before=' + nextBefore;
+
+  const { ok, data } = await api(url);
+  if (!ok) { listEl.innerHTML = '<div class="empty">Could not load comments.</div>'; return; }
+
+  const html = data.comments.map(renderComment).join('');
+  if (append) {
+    listEl.insertAdjacentHTML('beforeend', html);
+  } else {
+    listEl.innerHTML = data.comments.length ? html : '<div class="empty">No comments yet. Be the first.</div>';
+  }
+  attachFlagHandlers(listEl);
+
+  nextBefore = data.nextBefore;
+  loadMoreWrap.innerHTML = nextBefore
+    ? '<button class="secondary" id="load-more-btn">Load more</button>'
+    : '';
+  const loadMoreBtn = document.getElementById('load-more-btn');
+  if (loadMoreBtn) loadMoreBtn.addEventListener('click', () => loadComments(plate, true));
+}
+
+function attachFlagHandlers(container) {
+  container.querySelectorAll('[data-flag]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      const { ok, data } = await api('/api/comments/' + btn.dataset.flag + '/flag', { method: 'POST' });
+      btn.textContent = ok ? (data.hidden ? 'Reported (hidden)' : 'Reported') : 'Already reported';
+    });
+  });
+}
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -159,106 +293,86 @@ function fileToBase64(file) {
   });
 }
 
-function setStatus(el, message, kind) {
-  el.textContent = message;
-  el.className = 'status' + (kind ? ' ' + kind : '');
+function describeError(code) {
+  switch (code) {
+    case 'DAILY_LIMIT_EXCEEDED': return 'Daily comment limit reached. Try again tomorrow.';
+    case 'PLATE_TARGETING_LIMIT_EXCEEDED': return 'Too many comments on this plate today.';
+    case 'TOO_FAST': return 'Slow down a little before posting again.';
+    case 'INVALID_PLATE': return 'Invalid plate format.';
+    case 'INVALID_BODY': return 'Comment is too short or too long.';
+    case 'INVALID_IMAGE': return 'Image could not be uploaded.';
+    default: return 'Could not post comment.';
+  }
 }
 
-document.getElementById('submit-btn').addEventListener('click', async () => {
-  const statusEl = document.getElementById('report-status');
-  const plate = document.getElementById('report-plate').value.trim();
-  const comment = document.getElementById('report-comment').value.trim();
-  const imageFile = document.getElementById('report-image').files[0];
+async function submitComment() {
+  const statusEl = document.getElementById('c-status');
+  const bodyEl = document.getElementById('c-body');
+  const nameEl = document.getElementById('c-name');
+  const imageEl = document.getElementById('c-image');
+  const submitBtn = document.getElementById('c-submit');
+  const body = bodyEl.value.trim();
 
-  if (!plate) return setStatus(statusEl, 'Enter a plate.', 'error');
-  if (!selectedType) return setStatus(statusEl, 'Select a feedback type.', 'error');
+  if (body.length < 3) {
+    statusEl.textContent = 'Comment is too short.';
+    statusEl.className = 'status error';
+    return;
+  }
 
-  const payload = { plate, feedbackType: selectedType };
-  if (comment) payload.comment = comment;
+  const payload = { plate: currentPlate, body };
+  if (selectedTag) payload.tag = selectedTag;
+  if (nameEl.value.trim()) payload.authorName = nameEl.value.trim();
+  const imageFile = imageEl.files[0];
   if (imageFile) {
     payload.imageBase64 = await fileToBase64(imageFile);
     payload.imageContentType = imageFile.type;
   }
 
-  setStatus(statusEl, 'Submitting...', '');
+  submitBtn.disabled = true;
+  statusEl.textContent = 'Posting…';
+  statusEl.className = 'status';
+
   try {
-    const res = await fetch(API_BASE + '/api/submit', {
+    const { ok, data } = await api('/api/comments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    const data = await res.json();
-    if (res.ok && data.ok) {
-      setStatus(statusEl, 'Thanks — feedback recorded.', 'ok');
-      document.getElementById('report-comment').value = '';
-      document.getElementById('report-image').value = '';
+    if (ok) {
+      statusEl.textContent = 'Posted.';
+      statusEl.className = 'status ok';
+      bodyEl.value = '';
+      nameEl.value = '';
+      imageEl.value = '';
+      selectedTag = null;
+      document.querySelectorAll('#tag-grid .tag-btn').forEach((b) => b.classList.remove('selected'));
+      nextBefore = null;
+      await loadPlateSummary(currentPlate);
+      await loadComments(currentPlate, false);
     } else {
-      setStatus(statusEl, describeError(data.error), 'error');
+      statusEl.textContent = describeError(data.error);
+      statusEl.className = 'status error';
     }
   } catch (err) {
-    setStatus(statusEl, 'Network error. Try again.', 'error');
-  }
-});
-
-function describeError(code) {
-  switch (code) {
-    case 'DAILY_LIMIT_EXCEEDED': return 'Daily submission limit reached.';
-    case 'DUPLICATE_SUBMISSION': return 'You already reported this today.';
-    case 'PLATE_TARGETING_LIMIT_EXCEEDED': return 'Too many reports for this plate today.';
-    case 'INVALID_PLATE': return 'Invalid plate format.';
-    case 'INVALID_IMAGE': return 'Image could not be uploaded.';
-    default: return 'Could not submit feedback.';
+    statusEl.textContent = 'Network error. Try again.';
+    statusEl.className = 'status error';
+  } finally {
+    submitBtn.disabled = false;
   }
 }
 
-document.getElementById('search-btn').addEventListener('click', async () => {
-  const statusEl = document.getElementById('search-status');
-  const resultCard = document.getElementById('result-card');
-  const plate = document.getElementById('search-plate').value.trim();
-  resultCard.classList.remove('visible');
-  if (!plate) return setStatus(statusEl, 'Enter a plate.', 'error');
-
-  setStatus(statusEl, 'Searching...', '');
-  try {
-    const res = await fetch(API_BASE + '/api/plate/' + encodeURIComponent(plate));
-    const data = await res.json();
-    if (!res.ok || !data.ok) {
-      setStatus(statusEl, 'Invalid plate.', 'error');
-      return;
-    }
-    if (!data.visible) {
-      setStatus(statusEl, 'Not enough data yet for this plate.', '');
-      return;
-    }
-    setStatus(statusEl, '', '');
-    renderResult(data);
-    resultCard.classList.add('visible');
-  } catch (err) {
-    setStatus(statusEl, 'Network error. Try again.', 'error');
+function route() {
+  const hash = location.hash;
+  const match = hash.match(/^#\/plate\/(.+)$/);
+  if (match) {
+    renderPlate(decodeURIComponent(match[1]));
+  } else {
+    renderHome();
   }
-});
-
-function renderResult(data) {
-  document.getElementById('result-score').textContent = data.score;
-  const trendEl = document.getElementById('result-trend');
-  trendEl.textContent = data.trend;
-  trendEl.className = 'trend ' + data.trend;
-  document.getElementById('result-meta').textContent =
-    data.uniqueUsers + ' reporters · ' + data.distinctDays + ' days · ' + data.totalEvents + ' reports (30d)';
-
-  const ratiosEl = document.getElementById('result-ratios');
-  ratiosEl.innerHTML = '';
-  Object.entries(data.ratios).forEach(([type, ratio]) => {
-    const pct = Math.round(ratio * 100);
-    const row = document.createElement('div');
-    row.className = 'ratio-row';
-    row.innerHTML =
-      '<div class="ratio-label">' + TYPE_LABELS[type] + '</div>' +
-      '<div class="ratio-track"><div class="ratio-fill" style="width:' + pct + '%"></div></div>' +
-      '<div class="ratio-val">' + pct + '%</div>';
-    ratiosEl.appendChild(row);
-  });
 }
+
+window.addEventListener('hashchange', route);
+route();
 </script>
 </body>
 </html>

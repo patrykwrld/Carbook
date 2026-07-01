@@ -28,3 +28,9 @@ export async function storeImage(kv: KVNamespace, plate: string, image: ImageInp
   await kv.put(key, bytes, { metadata: { contentType: image.contentType } });
   return key;
 }
+
+export async function getImage(kv: KVNamespace, key: string): Promise<{ bytes: ArrayBuffer; contentType: string } | null> {
+  const value = await kv.getWithMetadata<{ contentType: string }>(key, 'arrayBuffer');
+  if (!value.value) return null;
+  return { bytes: value.value, contentType: value.metadata?.contentType ?? 'application/octet-stream' };
+}
