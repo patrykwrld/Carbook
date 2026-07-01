@@ -106,8 +106,11 @@
 </div>
 
 <script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
-const API_BASE = window.CARBOOK_API_BASE || '';
+const supabase = window.supabase.createClient(window.CARBOOK_SUPABASE_URL, window.CARBOOK_SUPABASE_KEY);
+const IMAGE_BUCKET = window.CARBOOK_IMAGE_BUCKET;
+
 const TAG_LABELS = {
   SAFE_DRIVING: 'Safe Driving',
   AGGRESSIVE_DRIVING: 'Aggressive Driving',
@@ -115,7 +118,23 @@ const TAG_LABELS = {
   PHONE_USE: 'Phone Use',
   OTHER: 'Other',
 };
+
+// There's no backend anymore, so this is a purely client-side anonymous
+// identifier (persisted in localStorage) used only so Postgres RLS can
+// rate-limit and de-dupe flags per "commenter". Anyone can reset it by
+// clearing site data — a known trade-off of having no server at all.
+const USER_HASH_KEY = 'carbook_anon_id';
+function getUserHash() {
+  let id = localStorage.getItem(USER_HASH_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(USER_HASH_KEY, id);
+  }
+  return id;
+}
+
 const view = document.getElementById('view');
+const COMMENT_SELECT = 'id,plate,author_name,body,tag,image_path,flag_count,hidden,created_at';
 
 function escapeHtml(str) {
   const div = document.createElement('div');
@@ -123,8 +142,8 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-function timeAgo(ms) {
-  const seconds = Math.floor((Date.now() - ms) / 1000);
+function timeAgo(iso) {
+  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
   if (seconds < 60) return 'just now';
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return minutes + 'm ago';
@@ -151,25 +170,19 @@ document.getElementById('search-input').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') document.getElementById('search-btn').click();
 });
 
-async function api(path, options) {
-  const res = await fetch(API_BASE + path, options);
-  const data = await res.json();
-  return { ok: res.ok && data.ok, status: res.status, data };
-}
-
-function imageUrl(imageKey) {
-  return API_BASE + '/api/image/' + encodeURIComponent(imageKey);
+function imageUrl(imagePath) {
+  return supabase.storage.from(IMAGE_BUCKET).getPublicUrl(imagePath).data.publicUrl;
 }
 
 function renderComment(c) {
-  const author = c.authorName ? escapeHtml(c.authorName) : 'Anonymous';
+  const author = c.author_name ? escapeHtml(c.author_name) : 'Anonymous';
   const tagBadge = c.tag ? '<span class="badge ' + c.tag + '">' + TAG_LABELS[c.tag] + '</span>' : '';
-  const img = c.imageKey ? '<img class="comment-img" src="' + imageUrl(c.imageKey) + '" loading="lazy" />' : '';
+  const img = c.image_path ? '<img class="comment-img" src="' + imageUrl(c.image_path) + '" loading="lazy" />' : '';
   return (
     '<div class="comment" data-id="' + c.id + '">' +
       '<div class="comment-top">' +
         '<span class="comment-author">' + author + ' ' + tagBadge + '</span>' +
-        '<span class="comment-time">' + timeAgo(c.createdAt) + '</span>' +
+        '<span class="comment-time">' + timeAgo(c.created_at) + '</span>' +
       '</div>' +
       '<div class="comment-body">' + escapeHtml(c.body) + '</div>' +
       img +
@@ -180,14 +193,18 @@ function renderComment(c) {
 
 async function renderHome() {
   view.innerHTML = '<section class="card"><h3 style="margin-top:0">Recently active plates</h3><div id="trending-list">Loading…</div></section>';
-  const { ok, data } = await api('/api/trending');
   const list = document.getElementById('trending-list');
-  if (!ok) { list.innerHTML = '<div class="empty">Could not load plates.</div>'; return; }
-  if (data.plates.length === 0) { list.innerHTML = '<div class="empty">No plates yet. Search one to start the conversation.</div>'; return; }
-  list.innerHTML = data.plates.map((p) =>
+  const { data, error } = await supabase
+    .from('plates')
+    .select('plate,comment_count,last_seen_at')
+    .order('last_seen_at', { ascending: false })
+    .limit(10);
+  if (error) { list.innerHTML = '<div class="empty">Could not load plates.</div>'; return; }
+  if (data.length === 0) { list.innerHTML = '<div class="empty">No plates yet. Search one to start the conversation.</div>'; return; }
+  list.innerHTML = data.map((p) =>
     '<div class="plate-list-item" data-plate="' + escapeHtml(p.plate) + '">' +
       '<span class="plate-code">' + escapeHtml(p.plate) + '</span>' +
-      '<span class="plate-meta">' + p.commentCount + ' comment' + (p.commentCount === 1 ? '' : 's') + '</span>' +
+      '<span class="plate-meta">' + p.comment_count + ' comment' + (p.comment_count === 1 ? '' : 's') + '</span>' +
     '</div>'
   ).join('');
   list.querySelectorAll('.plate-list-item').forEach((el) => {
@@ -199,7 +216,12 @@ let selectedTag = null;
 let currentPlate = null;
 let nextBefore = null;
 
-async function renderPlate(plate) {
+function normalizePlate(raw) {
+  return raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+async function renderPlate(rawPlate) {
+  const plate = normalizePlate(rawPlate);
   currentPlate = plate;
   selectedTag = null;
   view.innerHTML =
@@ -242,31 +264,37 @@ async function renderPlate(plate) {
 }
 
 async function loadPlateSummary(plate) {
-  const { ok, data } = await api('/api/plate/' + encodeURIComponent(plate));
   const meta = document.getElementById('plate-meta');
+  const { data, error } = await supabase.from('plates').select('comment_count').eq('plate', plate).maybeSingle();
   if (!meta) return;
-  if (!ok) { meta.textContent = 'Invalid plate.'; return; }
-  meta.textContent = data.commentCount + ' comment' + (data.commentCount === 1 ? '' : 's');
+  if (error) { meta.textContent = 'Invalid plate.'; return; }
+  const count = data ? data.comment_count : 0;
+  meta.textContent = count + ' comment' + (count === 1 ? '' : 's');
 }
 
 async function loadComments(plate, append) {
   const listEl = document.getElementById('comment-list');
   const loadMoreWrap = document.getElementById('load-more-wrap');
-  let url = '/api/plate/' + encodeURIComponent(plate) + '?limit=20';
-  if (append && nextBefore) url += '&before=' + nextBefore;
+  let query = supabase
+    .from('comments')
+    .select(COMMENT_SELECT)
+    .eq('plate', plate)
+    .order('created_at', { ascending: false })
+    .limit(20);
+  if (append && nextBefore) query = query.lt('created_at', nextBefore);
 
-  const { ok, data } = await api(url);
-  if (!ok) { listEl.innerHTML = '<div class="empty">Could not load comments.</div>'; return; }
+  const { data, error } = await query;
+  if (error) { listEl.innerHTML = '<div class="empty">Could not load comments.</div>'; return; }
 
-  const html = data.comments.map(renderComment).join('');
+  const html = data.map(renderComment).join('');
   if (append) {
     listEl.insertAdjacentHTML('beforeend', html);
   } else {
-    listEl.innerHTML = data.comments.length ? html : '<div class="empty">No comments yet. Be the first.</div>';
+    listEl.innerHTML = data.length ? html : '<div class="empty">No comments yet. Be the first.</div>';
   }
   attachFlagHandlers(listEl);
 
-  nextBefore = data.nextBefore;
+  nextBefore = data.length === 20 ? data[data.length - 1].created_at : null;
   loadMoreWrap.innerHTML = nextBefore
     ? '<button class="secondary" id="load-more-btn">Load more</button>'
     : '';
@@ -278,31 +306,21 @@ function attachFlagHandlers(container) {
   container.querySelectorAll('[data-flag]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       btn.disabled = true;
-      const { ok, data } = await api('/api/comments/' + btn.dataset.flag + '/flag', { method: 'POST' });
-      btn.textContent = ok ? (data.hidden ? 'Reported (hidden)' : 'Reported') : 'Already reported';
+      const { error } = await supabase
+        .from('flags')
+        .insert({ comment_id: Number(btn.dataset.flag), user_hash: getUserHash() });
+      btn.textContent = error ? 'Already reported' : 'Reported';
     });
   });
 }
 
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result.split(',')[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-function describeError(code) {
-  switch (code) {
-    case 'DAILY_LIMIT_EXCEEDED': return 'Daily comment limit reached. Try again tomorrow.';
-    case 'PLATE_TARGETING_LIMIT_EXCEEDED': return 'Too many comments on this plate today.';
-    case 'TOO_FAST': return 'Slow down a little before posting again.';
-    case 'INVALID_PLATE': return 'Invalid plate format.';
-    case 'INVALID_BODY': return 'Comment is too short or too long.';
-    case 'INVALID_IMAGE': return 'Image could not be uploaded.';
-    default: return 'Could not post comment.';
+function describeError(error) {
+  if (!error) return 'Could not post comment.';
+  if (error.code === '42501') {
+    return "Couldn't post — you may be rate-limited (too many comments today, too many on this plate, or posting too fast). Try again later.";
   }
+  if (error.code === '23514') return 'Comment is too short or too long.';
+  return 'Could not post comment.';
 }
 
 async function submitComment() {
@@ -319,26 +337,37 @@ async function submitComment() {
     return;
   }
 
-  const payload = { plate: currentPlate, body };
-  if (selectedTag) payload.tag = selectedTag;
-  if (nameEl.value.trim()) payload.authorName = nameEl.value.trim();
-  const imageFile = imageEl.files[0];
-  if (imageFile) {
-    payload.imageBase64 = await fileToBase64(imageFile);
-    payload.imageContentType = imageFile.type;
-  }
-
   submitBtn.disabled = true;
   statusEl.textContent = 'Posting…';
   statusEl.className = 'status';
 
   try {
-    const { ok, data } = await api('/api/comments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+    let imagePath = null;
+    const imageFile = imageEl.files[0];
+    if (imageFile) {
+      const path = currentPlate + '/' + crypto.randomUUID();
+      const { error: uploadError } = await supabase.storage.from(IMAGE_BUCKET).upload(path, imageFile, {
+        contentType: imageFile.type,
+      });
+      if (uploadError) {
+        statusEl.textContent = 'Image could not be uploaded.';
+        statusEl.className = 'status error';
+        submitBtn.disabled = false;
+        return;
+      }
+      imagePath = path;
+    }
+
+    const { error } = await supabase.from('comments').insert({
+      plate: currentPlate,
+      body,
+      tag: selectedTag,
+      author_name: nameEl.value.trim() || null,
+      image_path: imagePath,
+      user_hash: getUserHash(),
     });
-    if (ok) {
+
+    if (!error) {
       statusEl.textContent = 'Posted.';
       statusEl.className = 'status ok';
       bodyEl.value = '';
@@ -350,7 +379,7 @@ async function submitComment() {
       await loadPlateSummary(currentPlate);
       await loadComments(currentPlate, false);
     } else {
-      statusEl.textContent = describeError(data.error);
+      statusEl.textContent = describeError(error);
       statusEl.className = 'status error';
     }
   } catch (err) {

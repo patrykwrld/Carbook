@@ -1,5 +1,7 @@
-// When the frontend is served from the same Cloudflare Worker as the API
-// (via the ASSETS binding), leave this empty and requests stay same-origin.
-// When hosting the frontend elsewhere (e.g. Vercel), set this to the
-// deployed Worker's URL, e.g. "https://carbook.<subdomain>.workers.dev".
-window.CARBOOK_API_BASE = '';
+// Public by design: the Supabase URL and publishable ("anon") key are
+// meant to be exposed to the browser. Access control is enforced entirely
+// by Postgres Row Level Security policies on the Supabase project, not by
+// keeping this key secret.
+window.CARBOOK_SUPABASE_URL = 'https://ncjuttxaxbfbafkocemx.supabase.co';
+window.CARBOOK_SUPABASE_KEY = 'sb_publishable_7EM4NF8Wz-dsUCbVMqtf5Q_scoqm5Dj';
+window.CARBOOK_IMAGE_BUCKET = 'comment-images';
