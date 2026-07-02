@@ -8,7 +8,6 @@ const searchForm = $("search-form");
 const searchInput = $("search-input");
 const suggestions = $("search-suggestions");
 const activityList = $("activity-list");
-const leaderboardList = $("leaderboard-list");
 const plateNumber = $("plate-number");
 const plateStats = $("plate-stats");
 const commentForm = $("comment-form");
@@ -38,15 +37,13 @@ const CHART = {
   bar: "#a8752f",
   positive: "#2a78d6",
   negative: "#e34948",
-  neutral: "#e5e3de",
-  grid: "#e1e0d9",
-  ink: "#86868b",
+  neutral: "#e5e1d7",
+  grid: "#ddd8cc",
+  ink: "#8c877d",
 };
 
 let currentPlate = null;
 let pendingPhoto = null; // data URL awaiting submit
-let leaderboards = null;
-let activeBoard = "praised";
 
 // ---------- API ----------
 
@@ -74,6 +71,7 @@ function toast(message) {
 
 function showHome() {
   currentPlate = null;
+  $("sticky-bar").classList.remove("visible");
   viewPlate.classList.add("hidden");
   viewHome.classList.remove("hidden");
   if (location.hash) history.pushState(null, "", location.pathname);
@@ -86,6 +84,8 @@ function showPlate(plate) {
   viewHome.classList.add("hidden");
   viewPlate.classList.remove("hidden");
   plateNumber.textContent = plate;
+  $("sticky-plate").textContent = plate;
+  $("sticky-score").textContent = "–";
   if (location.hash.slice(1) !== plate) location.hash = plate;
   insights.open = false;
   insightsLoaded = false;
@@ -103,54 +103,46 @@ function normalize(raw) {
   return (raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
 }
 
-// ---------- Home: leaderboards ----------
+// ---------- Home: standings ----------
 
 async function loadLeaderboards() {
   try {
-    leaderboards = await api("/api/leaderboards");
-    renderLeaderboard();
+    const boards = await api("/api/leaderboards");
+    for (const name of ["praised", "reported", "trending"]) {
+      renderBoard($(`board-${name}`), boards[name] || []);
+    }
   } catch {
-    leaderboardList.innerHTML = '<p class="muted">Could not load leaderboards.</p>';
+    for (const name of ["praised", "reported", "trending"]) {
+      $(`board-${name}`).innerHTML = '<p class="board-empty">Could not load.</p>';
+    }
   }
 }
 
-function renderLeaderboard() {
-  const rows = leaderboards?.[activeBoard] || [];
+function renderBoard(container, rows) {
   if (!rows.length) {
-    leaderboardList.innerHTML =
-      '<p class="muted">Nothing here yet — plates need at least a couple of comments to rank.</p>';
+    container.innerHTML = '<p class="board-empty">Nothing here yet.</p>';
     return;
   }
-  leaderboardList.innerHTML = "";
+  container.innerHTML = "";
   rows.forEach((row, i) => {
     const div = document.createElement("div");
-    div.className = "lb-row";
+    div.className = "board-row";
+    div.style.animationDelay = `${i * 55}ms`;
     const scoreClass = row.reputation.score >= 55 ? "good" : row.reputation.score < 45 ? "bad" : "";
     div.innerHTML = `
-      <span class="lb-rank">${i + 1}</span>
+      <span class="board-rank">${i + 1}</span>
       <span class="mini-plate"></span>
-      <span class="lb-count"></span>
-      <span class="lb-score ${scoreClass}"></span>`;
+      <span class="board-count"></span>
+      <span class="board-score ${scoreClass}"></span>`;
     div.querySelector(".mini-plate").textContent = row.plate;
-    div.querySelector(".lb-count").textContent =
-      `${row.comment_count} comment${row.comment_count === 1 ? "" : "s"}`;
-    div.querySelector(".lb-score").textContent = row.reputation.score;
+    div.querySelector(".board-count").textContent =
+      `${row.comment_count} entr${row.comment_count === 1 ? "y" : "ies"}`;
+    div.querySelector(".board-score").textContent = row.reputation.score;
     div.title = `Reputation: ${row.reputation.label}`;
     div.addEventListener("click", () => showPlate(row.plate));
-    leaderboardList.appendChild(div);
+    container.appendChild(div);
   });
 }
-
-document.querySelectorAll(".tab").forEach((tab) => {
-  tab.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach((t) => {
-      t.classList.toggle("active", t === tab);
-      t.setAttribute("aria-selected", t === tab ? "true" : "false");
-    });
-    activeBoard = tab.dataset.board;
-    renderLeaderboard();
-  });
-});
 
 // ---------- Home: activity ----------
 
@@ -162,18 +154,21 @@ async function loadActivity() {
       return;
     }
     activityList.innerHTML = "";
-    for (const item of items) {
+    items.forEach((item, i) => {
       const div = document.createElement("div");
       div.className = "activity-item";
+      div.style.animationDelay = `${i * 40}ms`;
       div.innerHTML = `
         <span class="activity-tag">${TAG_META[item.tag]?.icon || "💬"}</span>
         <span class="mini-plate"></span>
-        <span class="activity-preview"></span>`;
+        <span class="activity-preview"></span>
+        <span class="activity-time"></span>`;
       div.querySelector(".mini-plate").textContent = item.plate;
       div.querySelector(".activity-preview").textContent = item.preview;
+      div.querySelector(".activity-time").textContent = formatDate(item.created_at);
       div.addEventListener("click", () => showPlate(item.plate));
       activityList.appendChild(div);
-    }
+    });
   } catch {
     activityList.innerHTML = '<p class="muted">Could not load activity.</p>';
   }
@@ -262,6 +257,7 @@ function renderReputation({ score, label }) {
     arc.style.strokeDashoffset = REP_CIRCUMFERENCE * (1 - score / 100);
   });
   $("rep-label").textContent = label;
+  $("sticky-score").textContent = `${score} · ${label}`;
 
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (reduceMotion) {
@@ -287,7 +283,7 @@ function renderStats(stats) {
 
 // ---------- Share ----------
 
-$("share-btn").addEventListener("click", async () => {
+async function shareCurrent() {
   const url = location.href;
   if (navigator.share) {
     try {
@@ -303,7 +299,17 @@ $("share-btn").addEventListener("click", async () => {
   } catch {
     toast(url);
   }
-});
+}
+$("share-btn").addEventListener("click", shareCurrent);
+$("sticky-share-btn").addEventListener("click", shareCurrent);
+
+// Slide the compact summary bar in once the plate hero scrolls out of view.
+new IntersectionObserver(
+  ([entry]) => {
+    $("sticky-bar").classList.toggle("visible", !entry.isIntersecting && currentPlate !== null);
+  },
+  { rootMargin: "-60px 0px 0px 0px" }
+).observe($("plate-hero"));
 
 // ---------- Insights (charts) ----------
 
@@ -488,7 +494,11 @@ function renderComments(comments) {
     return;
   }
   commentsList.innerHTML = "";
-  for (const c of comments) commentsList.appendChild(renderComment(c));
+  comments.forEach((c, i) => {
+    const el = renderComment(c);
+    el.style.animationDelay = `${Math.min(i, 8) * 60}ms`;
+    commentsList.appendChild(el);
+  });
 }
 
 function renderComment(c) {

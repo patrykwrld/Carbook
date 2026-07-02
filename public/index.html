@@ -10,19 +10,25 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>" />
 </head>
 <body>
+  <div class="grain" aria-hidden="true"></div>
+
   <header class="topbar">
     <a class="logo" href="#" id="logo-link" aria-label="Carbook home">
       <span class="logo-plate"><i class="eu-band" aria-hidden="true"></i>CAR<span>BOOK</span></span>
     </a>
-    <p class="tagline">Feedback for every plate on the road</p>
+    <p class="tagline">The road register</p>
   </header>
 
   <main>
     <!-- HOME VIEW -->
     <section id="view-home" class="view">
       <div class="hero">
-        <h1>Seen something<br /><em>on the road?</em></h1>
-        <p class="hero-sub">Look up a registration plate and read — or leave — feedback from other drivers.</p>
+        <div class="hero-glow" aria-hidden="true"></div>
+        <div class="hero-plate-decor" aria-hidden="true"><i></i>WR&nbsp;09&nbsp;PM</div>
+
+        <p class="kicker">Community feedback · every car on the road</p>
+        <h1>Every plate<br /><em>tells a story.</em></h1>
+        <p class="hero-sub">Look up a registration plate and read — or leave — feedback from other drivers. Praise, warnings, parking crimes, and the occasional rubber-duck dashboard.</p>
 
         <form id="search-form" class="plate-search" autocomplete="off">
           <div class="plate-input-wrap">
@@ -35,60 +41,77 @@
         <ul id="search-suggestions" class="suggestions hidden"></ul>
       </div>
 
-      <div class="home-grid">
-        <section class="panel leaderboard-panel" aria-labelledby="lb-heading">
-          <div class="panel-head">
-            <h2 id="lb-heading">Leaderboards</h2>
-            <div class="tabs" role="tablist" aria-label="Leaderboard categories">
-              <button class="tab active" role="tab" aria-selected="true" data-board="praised">🏆 Praised</button>
-              <button class="tab" role="tab" aria-selected="false" data-board="reported">⚠️ Reported</button>
-              <button class="tab" role="tab" aria-selected="false" data-board="trending">📈 Trending</button>
-            </div>
+      <section class="section" aria-labelledby="standings-title">
+        <header class="section-head">
+          <p class="kicker">This week on the road</p>
+          <h2 id="standings-title">The standings</h2>
+        </header>
+        <div class="boards">
+          <div class="board">
+            <h3><span aria-hidden="true">🏆</span> Most praised</h3>
+            <div id="board-praised" class="board-list"><div class="skeleton-row"></div><div class="skeleton-row"></div></div>
           </div>
-          <div id="leaderboard-list" class="leaderboard-list" role="tabpanel">
-            <div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div>
+          <div class="board">
+            <h3><span aria-hidden="true">⚠️</span> Most reported</h3>
+            <div id="board-reported" class="board-list"><div class="skeleton-row"></div><div class="skeleton-row"></div></div>
           </div>
-        </section>
+          <div class="board">
+            <h3><span aria-hidden="true">📈</span> Trending</h3>
+            <div id="board-trending" class="board-list"><div class="skeleton-row"></div><div class="skeleton-row"></div></div>
+          </div>
+        </div>
+      </section>
 
-        <section class="panel" aria-labelledby="feed-heading">
-          <div class="panel-head"><h2 id="feed-heading">Recent activity</h2></div>
-          <div id="activity-list" class="activity-list">
-            <div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div>
-          </div>
-        </section>
-      </div>
+      <section class="section" aria-labelledby="latest-title">
+        <header class="section-head">
+          <p class="kicker">Live from the road</p>
+          <h2 id="latest-title">Latest entries</h2>
+        </header>
+        <div id="activity-list" class="activity-list">
+          <div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div>
+        </div>
+      </section>
     </section>
 
     <!-- PLATE VIEW -->
     <section id="view-plate" class="view hidden">
+      <div id="sticky-bar" class="sticky-bar" aria-hidden="true">
+        <span id="sticky-plate" class="mini-plate">ABC1234</span>
+        <span id="sticky-score" class="sticky-score">–</span>
+        <button class="btn btn-ghost sticky-share" id="sticky-share-btn">Share ↗</button>
+      </div>
+
       <div class="plate-toolbar">
-        <button class="btn btn-ghost" id="back-btn">&larr; Back</button>
+        <button class="btn btn-ghost" id="back-btn">&larr; Register</button>
         <button class="btn btn-ghost" id="share-btn">Share ↗</button>
       </div>
 
-      <div class="plate-header">
-        <div class="plate-display">
-          <span class="plate-badge big" aria-hidden="true"><i>★</i>EU</span>
-          <span id="plate-number" class="plate-number">ABC1234</span>
+      <div class="plate-hero" id="plate-hero">
+        <div class="plate-stage">
+          <div class="plate-display">
+            <span class="plate-badge big" aria-hidden="true"><i>★</i>EU</span>
+            <span id="plate-number" class="plate-number">ABC1234</span>
+          </div>
         </div>
 
         <div class="reputation" id="reputation">
-          <svg class="rep-ring" viewBox="0 0 96 96" width="96" height="96" role="img" aria-label="Reputation score">
+          <svg class="rep-ring" viewBox="0 0 96 96" role="img" aria-label="Reputation score">
             <circle class="rep-track" cx="48" cy="48" r="42" />
             <circle class="rep-arc" id="rep-arc" cx="48" cy="48" r="42" />
             <text id="rep-score" x="48" y="46" text-anchor="middle">–</text>
             <text class="rep-of" x="48" y="62" text-anchor="middle">/ 100</text>
           </svg>
           <div class="rep-meta">
+            <p class="kicker">Standing</p>
             <span id="rep-label" class="rep-label">Reputation</span>
             <span id="plate-stats" class="plate-stats"></span>
           </div>
         </div>
       </div>
 
-      <details class="panel insights" id="insights">
+      <details class="insights" id="insights">
         <summary>
-          <span>Insights</span>
+          <span class="summary-title"><span class="kicker">The record</span>Insights</span>
           <span class="chevron" aria-hidden="true">›</span>
         </summary>
         <div id="insights-body" class="insights-body">
@@ -96,8 +119,11 @@
         </div>
       </details>
 
-      <form id="comment-form" class="panel comment-form">
-        <h3>Add your feedback</h3>
+      <form id="comment-form" class="comment-form">
+        <header class="form-head">
+          <p class="kicker">Add to the record</p>
+          <h3>Your feedback</h3>
+        </header>
         <div class="form-row">
           <input id="comment-author" type="text" placeholder="Your name (optional)" maxlength="40" />
           <select id="comment-tag" aria-label="Comment category">
@@ -127,6 +153,10 @@
         <p id="form-error" class="error hidden"></p>
       </form>
 
+      <div class="section-head comments-head">
+        <p class="kicker">The record</p>
+        <h2>Entries</h2>
+      </div>
       <div id="comments-list" class="comments-list"></div>
     </section>
   </main>
