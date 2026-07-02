@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Carbook — feedback for every plate</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="logo" href="#" id="logo-link">
+      <span class="logo-plate">CAR<span>BOOK</span></span>
+    </a>
+    <p class="tagline">Leave feedback for any car on the road</p>
+  </header>
+
+  <main>
+    <!-- HOME VIEW -->
+    <section id="view-home" class="view">
+      <div class="hero">
+        <h1>Seen something on the road?</h1>
+        <p>Look up a registration plate and read — or leave — feedback from other drivers.</p>
+
+        <form id="search-form" class="plate-search" autocomplete="off">
+          <div class="plate-input-wrap">
+            <span class="plate-badge">EU</span>
+            <input id="search-input" type="text" placeholder="ABC 1234" maxlength="12"
+                   spellcheck="false" aria-label="Registration plate" />
+          </div>
+          <button type="submit" class="btn btn-primary">Look up</button>
+        </form>
+        <ul id="search-suggestions" class="suggestions hidden"></ul>
+      </div>
+
+      <div class="feed">
+        <h2>Recent activity</h2>
+        <div id="activity-list" class="activity-list">
+          <p class="muted">No comments yet — be the first to look up a plate.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- PLATE VIEW -->
+    <section id="view-plate" class="view hidden">
+      <button class="btn btn-ghost back-btn" id="back-btn">&larr; Back to search</button>
+
+      <div class="plate-header">
+        <div class="plate-display">
+          <span class="plate-badge big">EU</span>
+          <span id="plate-number" class="plate-number">ABC1234</span>
+        </div>
+        <div id="plate-stats" class="plate-stats"></div>
+      </div>
+
+      <form id="comment-form" class="comment-form">
+        <h3>Add your feedback</h3>
+        <div class="form-row">
+          <input id="comment-author" type="text" placeholder="Your name (optional)" maxlength="40" />
+          <select id="comment-tag" aria-label="Comment category">
+            <option value="general">💬 General</option>
+            <option value="praise">👏 Nice driving</option>
+            <option value="warning">⚠️ Careless driving</option>
+            <option value="parking">🅿️ Parking issue</option>
+            <option value="funny">😄 Funny moment</option>
+          </select>
+        </div>
+        <textarea id="comment-text" rows="3" maxlength="500"
+                  placeholder="What happened? Keep it factual and civil — comments can be reported and hidden."></textarea>
+        <div class="form-footer">
+          <span id="char-count" class="muted">0 / 500</span>
+          <button type="submit" class="btn btn-primary">Post comment</button>
+        </div>
+        <p id="form-error" class="error hidden"></p>
+      </form>
+
+      <div id="comments-list" class="comments-list"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Carbook is a community board. Comments reflect their authors' views. Abusive content can be reported and is hidden automatically.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

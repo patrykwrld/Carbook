@@ -1,0 +1,5 @@
+node_modules/
+carbook.db
+carbook.db-shm
+carbook.db-wal
+.env
