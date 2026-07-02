@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Carbook — Know who's behind the wheel</title>
+<meta name="description" content="Carbook is where drivers report and discover real feedback on any license plate — safe merges, reckless driving, phone use, and everything in between." />
+<style>
+  :root {
+    --bg: #0b0d12;
+    --bg-alt: #0f1218;
+    --card: #171a21;
+    --border: #262b36;
+    --text: #e7e9ee;
+    --muted: #8b93a3;
+    --accent: #4f8cff;
+    --accent2: #7c5cff;
+    --good: #34c77b;
+    --bad: #e5484d;
+    --warn: #e5a63d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .app { max-width: 640px; margin: 0 auto; padding: 16px; min-height: 100vh; }
+  a { color: var(--accent); text-decoration: none; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 10px; }
+  h1 { font-size: 22px; margin: 0; cursor: pointer; white-space: nowrap; }
+  h1 span { color: var(--accent); }
+  .auth-controls { display: flex; gap: 8px; align-items: center; }
+  .auth-controls .who { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .search-row { display: flex; gap: 8px; margin-bottom: 20px; }
+  input[type=text], input[type=email], input[type=password], textarea, select {
+    width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); font-size: 16px;
+  }
+  textarea { resize: vertical; min-height: 80px; }
+  .search-row input { flex: 1; }
+  button {
+    padding: 12px 16px; border-radius: 10px; border: none;
+    background: var(--accent); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
+    white-space: nowrap;
+  }
+  button.secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+  button.small { padding: 8px 12px; font-size: 13px; }
+  button.link-btn { background: none; color: var(--accent); padding: 0; font-weight: 600; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .status { margin: 10px 0; font-size: 14px; }
+  .status.error { color: var(--bad); }
+  .status.ok { color: var(--good); }
+  section.card {
+    padding: 16px; border-radius: 12px; background: var(--card);
+    border: 1px solid var(--border); margin-bottom: 14px;
+  }
+
+  /* Hero / landing */
+  .hero {
+    padding: 36px 20px; border-radius: 20px; margin-bottom: 22px; text-align: center;
+    background:
+      radial-gradient(circle at 20% -20%, rgba(79,140,255,0.25), transparent 55%),
+      radial-gradient(circle at 100% 0%, rgba(124,92,255,0.22), transparent 50%),
+      var(--bg-alt);
+    border: 1px solid var(--border);
+  }
+  .hero-eyebrow {
+    display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--accent); background: rgba(79,140,255,0.12);
+    border: 1px solid rgba(79,140,255,0.3); padding: 5px 12px; border-radius: 999px; margin-bottom: 16px;
+  }
+  .hero h2 {
+    font-size: 32px; line-height: 1.15; margin: 0 0 12px;
+    background: linear-gradient(135deg, #ffffff, #b9c6ff 70%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p.sub { color: var(--muted); font-size: 16px; line-height: 1.5; max-width: 460px; margin: 0 auto 24px; }
+  .hero-ctas { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .hero-ctas button { padding: 13px 22px; font-size: 15px; }
+
+  .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 22px; }
+  .feature-card { padding: 16px; border-radius: 14px; background: var(--card); border: 1px solid var(--border); }
+  .feature-card .icon { font-size: 20px; margin-bottom: 8px; display: block; }
+  .feature-card h3 { font-size: 14px; margin: 0 0 6px; }
+  .feature-card p { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.4; }
+  @media (max-width: 420px) { .feature-grid { grid-template-columns: 1fr; } .hero h2 { font-size: 26px; } }
+
+  .plate-list-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer;
+  }
+  .plate-list-item:last-child { border-bottom: none; }
+  .plate-code { font-weight: 700; font-size: 16px; letter-spacing: 1px; }
+  .plate-meta { color: var(--muted); font-size: 13px; }
+  .plate-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .plate-header .plate-code { font-size: 26px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
+  .tag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+  .tag-btn {
+    padding: 10px 8px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-size: 13px; text-align: center; cursor: pointer;
+  }
+  .tag-btn.selected { border-color: var(--accent); background: #1b2333; }
+  .comment { padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .comment:last-child { border-bottom: none; }
+  .comment-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .comment-author { font-weight: 600; font-size: 14px; }
+  .comment-time { color: var(--muted); font-size: 12px; }
+  .comment-body { margin-top: 6px; font-size: 14px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
+  .comment-img { margin-top: 8px; max-width: 100%; border-radius: 8px; display: block; }
+  .comment-actions { margin-top: 6px; display: flex; gap: 10px; align-items: center; }
+  .badge {
+    display: inline-block; font-size: 11px; padding: 3px 8px; border-radius: 999px;
+    background: #1b2333; color: var(--muted);
+  }
+  .badge.SAFE_DRIVING { color: var(--good); }
+  .badge.AGGRESSIVE_DRIVING { color: var(--bad); }
+  .badge.PHONE_USE { color: var(--warn); }
+  .badge.LET_MERGE { color: var(--accent); }
+  .flag-btn { background: none; border: none; color: var(--muted); font-size: 12px; padding: 0; cursor: pointer; }
+  .flag-btn:hover { color: var(--bad); }
+  .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 20px 0; }
+  .file-input { margin-top: 6px; font-size: 13px; color: var(--muted); }
+  .back-link { display: inline-block; margin-bottom: 12px; font-size: 14px; }
+  #load-more-wrap { text-align: center; margin-top: 10px; }
+  .login-prompt { text-align: center; padding: 10px 0; }
+  .login-prompt p { color: var(--muted); font-size: 14px; margin: 0 0 10px; }
+
+  /* Auth modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(5,6,9,0.7); display: none;
+    align-items: center; justify-content: center; padding: 20px; z-index: 100;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal { width: 100%; max-width: 380px; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+  .modal-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .modal-tab {
+    flex: 1; text-align: center; padding: 8px; border-radius: 8px; cursor: pointer;
+    color: var(--muted); font-size: 14px; font-weight: 600;
+  }
+  .modal-tab.active { color: var(--text); background: var(--bg); }
+  .modal-close { float: right; background: none; color: var(--muted); font-size: 20px; padding: 0; line-height: 1; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1 id="home-link">Car<span>book</span></h1>
+    <div class="auth-controls" id="auth-controls"></div>
+  </header>
+
+  <div class="search-row">
+    <input type="text" id="search-input" placeholder="Search a plate, e.g. ABC1234" autocapitalize="characters" autocomplete="off" />
+    <button id="search-btn">Search</button>
+  </div>
+
+  <div id="view"></div>
+</div>
+
+<div class="modal-overlay" id="auth-modal">
+  <div class="modal">
+    <button class="modal-close" id="modal-close">&times;</button>
+    <div class="modal-tabs">
+      <div class="modal-tab active" data-tab="signup">Sign up</div>
+      <div class="modal-tab" data-tab="login">Log in</div>
+    </div>
+    <div id="modal-body"></div>
+    <div class="status" id="auth-status"></div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+const supabase = window.supabase.createClient(window.CARBOOK_SUPABASE_URL, window.CARBOOK_SUPABASE_KEY);
+const IMAGE_BUCKET = window.CARBOOK_IMAGE_BUCKET;
+
+const TAG_LABELS = {
+  SAFE_DRIVING: 'Safe Driving',
+  AGGRESSIVE_DRIVING: 'Aggressive Driving',
+  LET_MERGE: 'Let Merge',
+  PHONE_USE: 'Phone Use',
+  OTHER: 'Other',
+};
+
+const view = document.getElementById('view');
+const COMMENT_SELECT = 'id,plate,body,tag,image_path,flag_count,hidden,created_at,profiles(display_name)';
+
+let session = null;
+let profile = null;
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function timeAgo(iso) {
+  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return minutes + 'm ago';
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return hours + 'h ago';
+  const days = Math.floor(hours / 24);
+  return days + 'd ago';
+}
+
+function navigateHome() { location.hash = '#/'; }
+function navigatePlate(plate) { location.hash = '#/plate/' + encodeURIComponent(plate); }
+
+document.getElementById('home-link').addEventListener('click', navigateHome);
+document.getElementById('search-btn').addEventListener('click', () => {
+  const plate = document.getElementById('search-input').value.trim();
+  if (plate) navigatePlate(plate);
+});
+document.getElementById('search-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('search-btn').click();
+});
+
+function imageUrl(imagePath) {
+  return supabase.storage.from(IMAGE_BUCKET).getPublicUrl(imagePath).data.publicUrl;
+}
+
+// ---------- Auth ----------
+
+function renderAuthControls() {
+  const el = document.getElementById('auth-controls');
+  if (session) {
+    const name = profile ? escapeHtml(profile.display_name) : '…';
+    el.innerHTML =
+      '<span class="who">Hi, ' + name + '</span>' +
+      '<button class="secondary small" id="logout-btn">Log out</button>';
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+    });
+  } else {
+    el.innerHTML =
+      '<button class="secondary small" id="login-open-btn">Log in</button>' +
+      '<button class="small" id="signup-open-btn">Sign up</button>';
+    document.getElementById('login-open-btn').addEventListener('click', () => openAuthModal('login'));
+    document.getElementById('signup-open-btn').addEventListener('click', () => openAuthModal('signup'));
+  }
+}
+
+async function loadProfile() {
+  if (!session) { profile = null; return; }
+  const { data } = await supabase.from('profiles').select('display_name').eq('id', session.user.id).maybeSingle();
+  profile = data;
+}
+
+const authModal = document.getElementById('auth-modal');
+const modalBody = document.getElementById('modal-body');
+const authStatusEl = document.getElementById('auth-status');
+let activeAuthTab = 'signup';
+
+function openAuthModal(tab) {
+  activeAuthTab = tab || 'signup';
+  authStatusEl.textContent = '';
+  authStatusEl.className = 'status';
+  renderAuthModalTabs();
+  authModal.classList.add('open');
+}
+function closeAuthModal() { authModal.classList.remove('open'); }
+document.getElementById('modal-close').addEventListener('click', closeAuthModal);
+authModal.addEventListener('click', (e) => { if (e.target === authModal) closeAuthModal(); });
+document.querySelectorAll('.modal-tab').forEach((tab) => {
+  tab.addEventListener('click', () => { activeAuthTab = tab.dataset.tab; renderAuthModalTabs(); });
+});
+
+function renderAuthModalTabs() {
+  document.querySelectorAll('.modal-tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === activeAuthTab));
+  if (activeAuthTab === 'signup') {
+    modalBody.innerHTML =
+      '<label for="su-name">Display name</label>' +
+      '<input type="text" id="su-name" maxlength="40" placeholder="Alex" />' +
+      '<label for="su-email">Email</label>' +
+      '<input type="email" id="su-email" placeholder="you@example.com" />' +
+      '<label for="su-password">Password</label>' +
+      '<input type="password" id="su-password" placeholder="At least 6 characters" />' +
+      '<div style="margin-top:14px"><button id="su-submit" style="width:100%">Create account</button></div>';
+    document.getElementById('su-submit').addEventListener('click', handleSignup);
+  } else {
+    modalBody.innerHTML =
+      '<label for="li-email">Email</label>' +
+      '<input type="email" id="li-email" placeholder="you@example.com" />' +
+      '<label for="li-password">Password</label>' +
+      '<input type="password" id="li-password" placeholder="Your password" />' +
+      '<div style="margin-top:14px"><button id="li-submit" style="width:100%">Log in</button></div>';
+    document.getElementById('li-submit').addEventListener('click', handleLogin);
+  }
+}
+
+async function handleSignup() {
+  const name = document.getElementById('su-name').value.trim();
+  const email = document.getElementById('su-email').value.trim();
+  const password = document.getElementById('su-password').value;
+  if (!name) { authStatusEl.textContent = 'Enter a display name.'; authStatusEl.className = 'status error'; return; }
+  if (password.length < 6) { authStatusEl.textContent = 'Password must be at least 6 characters.'; authStatusEl.className = 'status error'; return; }
+
+  authStatusEl.textContent = 'Creating account…';
+  authStatusEl.className = 'status';
+  const { data, error } = await supabase.auth.signUp({
+    email, password, options: { data: { display_name: name } },
+  });
+  if (error) {
+    authStatusEl.textContent = error.message;
+    authStatusEl.className = 'status error';
+    return;
+  }
+  if (data.session) {
+    closeAuthModal();
+  } else {
+    authStatusEl.textContent = 'Check your email to confirm your account, then log in.';
+    authStatusEl.className = 'status ok';
+  }
+}
+
+async function handleLogin() {
+  const email = document.getElementById('li-email').value.trim();
+  const password = document.getElementById('li-password').value;
+  authStatusEl.textContent = 'Logging in…';
+  authStatusEl.className = 'status';
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    authStatusEl.textContent = error.message;
+    authStatusEl.className = 'status error';
+    return;
+  }
+  closeAuthModal();
+}
+
+supabase.auth.onAuthStateChange(async (_event, newSession) => {
+  session = newSession;
+  await loadProfile();
+  renderAuthControls();
+  route(); // re-render current view so post/flag forms reflect auth state
+});
+
+// ---------- Home / landing ----------
+
+async function renderHome() {
+  const hero = session ? '' :
+    '<section class="hero">' +
+      '<span class="hero-eyebrow">Now in beta</span>' +
+      '<h2>Know who’s really<br/>behind the wheel.</h2>' +
+      '<p class="sub">Carbook is where drivers report and discover real feedback on any license plate — safe merges, reckless driving, phone use, and everything in between.</p>' +
+      '<div class="hero-ctas">' +
+        '<button id="hero-signup-btn">Create free account</button>' +
+        '<button class="secondary" id="hero-search-btn">Browse plates</button>' +
+      '</div>' +
+    '</section>' +
+    '<div class="feature-grid">' +
+      '<div class="feature-card"><span class="icon">🏷️</span><h3>Tag what happened</h3><p>Safe driving, aggressive driving, phone use, or a driver who let you merge — quick structured signal, not just noise.</p></div>' +
+      '<div class="feature-card"><span class="icon">🛡️</span><h3>Auto-moderated</h3><p>Posts are hidden automatically once enough people report them. No manual review queue, no bureaucracy.</p></div>' +
+      '<div class="feature-card"><span class="icon">🔒</span><h3>Real accounts</h3><p>Every post is tied to an account, not an anonymous drive-by — feedback carries actual accountability.</p></div>' +
+      '<div class="feature-card"><span class="icon">🔎</span><h3>Free to browse</h3><p>Anyone can search a plate and read what’s been reported. No account needed to look something up.</p></div>' +
+    '</div>';
+
+  view.innerHTML = hero + '<section class="card"><h3 style="margin-top:0">Recently active plates</h3><div id="trending-list">Loading…</div></section>';
+
+  if (!session) {
+    document.getElementById('hero-signup-btn').addEventListener('click', () => openAuthModal('signup'));
+    document.getElementById('hero-search-btn').addEventListener('click', () => document.getElementById('search-input').focus());
+  }
+
+  const list = document.getElementById('trending-list');
+  const { data, error } = await supabase
+    .from('plates')
+    .select('plate,comment_count,last_seen_at')
+    .order('last_seen_at', { ascending: false })
+    .limit(10);
+  if (error) { list.innerHTML = '<div class="empty">Could not load plates.</div>'; return; }
+  if (data.length === 0) { list.innerHTML = '<div class="empty">No plates yet. Search one to start the conversation.</div>'; return; }
+  list.innerHTML = data.map((p) =>
+    '<div class="plate-list-item" data-plate="' + escapeHtml(p.plate) + '">' +
+      '<span class="plate-code">' + escapeHtml(p.plate) + '</span>' +
+      '<span class="plate-meta">' + p.comment_count + ' post' + (p.comment_count === 1 ? '' : 's') + '</span>' +
+    '</div>'
+  ).join('');
+  list.querySelectorAll('.plate-list-item').forEach((el) => {
+    el.addEventListener('click', () => navigatePlate(el.dataset.plate));
+  });
+}
+
+// ---------- Plate thread ----------
+
+let selectedTag = null;
+let currentPlate = null;
+let nextBefore = null;
+
+function normalizePlate(raw) {
+  return raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function renderPostForm() {
+  if (!session) {
+    return (
+      '<section class="card">' +
+        '<div class="login-prompt">' +
+          '<p>Log in to post about this plate.</p>' +
+          '<button id="prompt-login-btn">Log in or sign up</button>' +
+        '</div>' +
+      '</section>'
+    );
+  }
+  return (
+    '<section class="card">' +
+      '<h3 style="margin-top:0">Add a post</h3>' +
+      '<label for="c-body">Comment</label>' +
+      '<textarea id="c-body" maxlength="1000" placeholder="What happened with this driver?"></textarea>' +
+      '<label>Tag (optional)</label>' +
+      '<div class="tag-grid" id="tag-grid">' +
+        Object.keys(TAG_LABELS).map((t) => '<div class="tag-btn" data-tag="' + t + '">' + TAG_LABELS[t] + '</div>').join('') +
+      '</div>' +
+      '<label for="c-image">Photo (optional)</label>' +
+      '<input class="file-input" type="file" id="c-image" accept="image/jpeg,image/png,image/webp" />' +
+      '<div style="margin-top:14px"><button id="c-submit" style="width:100%">Post</button></div>' +
+      '<div class="status" id="c-status"></div>' +
+    '</section>'
+  );
+}
+
+async function renderPlate(rawPlate) {
+  const plate = normalizePlate(rawPlate);
+  currentPlate = plate;
+  selectedTag = null;
+  view.innerHTML =
+    '<a class="back-link" href="#/">&larr; All plates</a>' +
+    '<div class="plate-header"><span class="plate-code">' + escapeHtml(plate) + '</span></div>' +
+    '<div class="plate-meta" id="plate-meta" style="margin-bottom:14px">Loading…</div>' +
+    renderPostForm() +
+    '<section class="card"><h3 style="margin-top:0">Posts</h3><div id="comment-list">Loading…</div>' +
+      '<div id="load-more-wrap"></div>' +
+    '</section>';
+
+  if (!session) {
+    document.getElementById('prompt-login-btn').addEventListener('click', () => openAuthModal('login'));
+  } else {
+    document.getElementById('tag-grid').querySelectorAll('.tag-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const isSame = btn.classList.contains('selected');
+        document.querySelectorAll('#tag-grid .tag-btn').forEach((b) => b.classList.remove('selected'));
+        selectedTag = isSame ? null : btn.dataset.tag;
+        if (!isSame) btn.classList.add('selected');
+      });
+    });
+    document.getElementById('c-submit').addEventListener('click', submitComment);
+  }
+
+  nextBefore = null;
+  await loadPlateSummary(plate);
+  await loadComments(plate, false);
+}
+
+async function loadPlateSummary(plate) {
+  const meta = document.getElementById('plate-meta');
+  const { data, error } = await supabase.from('plates').select('comment_count').eq('plate', plate).maybeSingle();
+  if (!meta) return;
+  if (error) { meta.textContent = 'Invalid plate.'; return; }
+  const count = data ? data.comment_count : 0;
+  meta.textContent = count + ' post' + (count === 1 ? '' : 's');
+}
+
+function renderComment(c) {
+  const author = c.profiles ? escapeHtml(c.profiles.display_name) : 'Deleted user';
+  const tagBadge = c.tag ? '<span class="badge ' + c.tag + '">' + TAG_LABELS[c.tag] + '</span>' : '';
+  const img = c.image_path ? '<img class="comment-img" src="' + imageUrl(c.image_path) + '" loading="lazy" />' : '';
+  const reportBtn = session ? '<button class="flag-btn" data-flag="' + c.id + '">Report</button>' : '';
+  return (
+    '<div class="comment" data-id="' + c.id + '">' +
+      '<div class="comment-top">' +
+        '<span class="comment-author">' + author + ' ' + tagBadge + '</span>' +
+        '<span class="comment-time">' + timeAgo(c.created_at) + '</span>' +
+      '</div>' +
+      '<div class="comment-body">' + escapeHtml(c.body) + '</div>' +
+      img +
+      '<div class="comment-actions">' + reportBtn + '</div>' +
+    '</div>'
+  );
+}
+
+async function loadComments(plate, append) {
+  const listEl = document.getElementById('comment-list');
+  const loadMoreWrap = document.getElementById('load-more-wrap');
+  let query = supabase
+    .from('comments')
+    .select(COMMENT_SELECT)
+    .eq('plate', plate)
+    .order('created_at', { ascending: false })
+    .limit(20);
+  if (append && nextBefore) query = query.lt('created_at', nextBefore);
+
+  const { data, error } = await query;
+  if (error) { listEl.innerHTML = '<div class="empty">Could not load posts.</div>'; return; }
+
+  const html = data.map(renderComment).join('');
+  if (append) {
+    listEl.insertAdjacentHTML('beforeend', html);
+  } else {
+    listEl.innerHTML = data.length ? html : '<div class="empty">No posts yet. Be the first.</div>';
+  }
+  attachFlagHandlers(listEl);
+
+  nextBefore = data.length === 20 ? data[data.length - 1].created_at : null;
+  loadMoreWrap.innerHTML = nextBefore
+    ? '<button class="secondary" id="load-more-btn">Load more</button>'
+    : '';
+  const loadMoreBtn = document.getElementById('load-more-btn');
+  if (loadMoreBtn) loadMoreBtn.addEventListener('click', () => loadComments(plate, true));
+}
+
+function attachFlagHandlers(container) {
+  container.querySelectorAll('[data-flag]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      const { error } = await supabase.from('flags').insert({ comment_id: Number(btn.dataset.flag) });
+      btn.textContent = error ? 'Already reported' : 'Reported';
+    });
+  });
+}
+
+function describeError(error) {
+  if (!error) return 'Could not post.';
+  if (error.code === '42501') {
+    return "Couldn't post — you may be rate-limited (too many posts today, too many on this plate, or posting too fast). Try again later.";
+  }
+  if (error.code === '23514') return 'Comment is too short or too long.';
+  return 'Could not post.';
+}
+
+async function submitComment() {
+  const statusEl = document.getElementById('c-status');
+  const bodyEl = document.getElementById('c-body');
+  const imageEl = document.getElementById('c-image');
+  const submitBtn = document.getElementById('c-submit');
+  const body = bodyEl.value.trim();
+
+  if (body.length < 3) {
+    statusEl.textContent = 'Comment is too short.';
+    statusEl.className = 'status error';
+    return;
+  }
+
+  submitBtn.disabled = true;
+  statusEl.textContent = 'Posting…';
+  statusEl.className = 'status';
+
+  try {
+    let imagePath = null;
+    const imageFile = imageEl.files[0];
+    if (imageFile) {
+      const path = currentPlate + '/' + crypto.randomUUID();
+      const { error: uploadError } = await supabase.storage.from(IMAGE_BUCKET).upload(path, imageFile, {
+        contentType: imageFile.type,
+      });
+      if (uploadError) {
+        statusEl.textContent = 'Image could not be uploaded.';
+        statusEl.className = 'status error';
+        submitBtn.disabled = false;
+        return;
+      }
+      imagePath = path;
+    }
+
+    const { error } = await supabase.from('comments').insert({
+      plate: currentPlate,
+      body,
+      tag: selectedTag,
+      image_path: imagePath,
+    });
+
+    if (!error) {
+      statusEl.textContent = 'Posted.';
+      statusEl.className = 'status ok';
+      bodyEl.value = '';
+      imageEl.value = '';
+      selectedTag = null;
+      document.querySelectorAll('#tag-grid .tag-btn').forEach((b) => b.classList.remove('selected'));
+      nextBefore = null;
+      await loadPlateSummary(currentPlate);
+      await loadComments(currentPlate, false);
+    } else {
+      statusEl.textContent = describeError(error);
+      statusEl.className = 'status error';
+    }
+  } catch (err) {
+    statusEl.textContent = 'Network error. Try again.';
+    statusEl.className = 'status error';
+  } finally {
+    submitBtn.disabled = false;
+  }
+}
+
+// ---------- Routing ----------
+
+function route() {
+  const hash = location.hash;
+  const match = hash.match(/^#\/plate\/(.+)$/);
+  if (match) {
+    renderPlate(decodeURIComponent(match[1]));
+  } else {
+    renderHome();
+  }
+}
+
+window.addEventListener('hashchange', route);
+
+(async () => {
+  const { data } = await supabase.auth.getSession();
+  session = data.session;
+  await loadProfile();
+  renderAuthControls();
+  route();
+})();
+</script>
+</body>
+</html>
