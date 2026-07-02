@@ -1,75 +1,68 @@
 # Carbook
 
-A website where people comment on specific vehicle license plates —
-built on Supabase (Postgres + Row Level Security + Storage) with a static
-frontend on Vercel. There is no custom backend: the browser talks
-directly to Supabase's REST API, and Postgres itself enforces everything
-that would normally live in server code.
+Know who's really behind the wheel. Carbook is where drivers create an
+account and post feedback on any license plate — safe merges, reckless
+driving, phone use, and everything in between — built on Supabase
+(Postgres + Row Level Security + Storage) with a static frontend on
+Vercel. There is no custom backend: the browser talks directly to
+Supabase's REST/Auth API, and Postgres itself enforces everything that
+would normally live in server code.
 
 ## Features
 
-- Search any plate and read/post comments about it
-- Optional tag per comment (Safe Driving, Aggressive Driving, Let Merge,
-  Phone Use, Other) for a quick at-a-glance signal
-- Optional display name and photo per comment
+- A landing page (headline, feature highlights, CTAs) for logged-out
+  visitors; collapses to a compact search once you're signed in
+- Real accounts (email/password via Supabase Auth) — sign up, log in,
+  log out, session persists across visits
+- Search any plate and read its posts without an account
+- **Posting requires an account** — every post is tied to a real
+  profile (`display_name`), not an anonymous drive-by
+- Optional tag per post (Safe Driving, Aggressive Driving, Let Merge,
+  Phone Use, Other) and an optional photo
 - Homepage lists recently active plates
-- Anonymous by design: no accounts, no login
 - Abuse controls enforced by Postgres Row Level Security at insert time:
-  a daily comment cap, a per-plate-per-day cap (blunts single-plate
-  pile-ons), and a minimum interval between comments
-- Community moderation: anyone can report a comment; it's auto-hidden
-  once enough distinct people report it (a unique constraint stops one
-  person from forcing a hide by reporting repeatedly)
+  a daily post cap, a per-plate-per-day cap (blunts single-plate
+  pile-ons), and a minimum interval between posts — keyed off `auth.uid()`,
+  which the client cannot spoof
+- Community moderation: any logged-in user can report a post; it's
+  auto-hidden once enough distinct people report it (a unique constraint
+  stops one person from forcing a hide by reporting repeatedly)
 
 ## Architecture
 
 ```
-public/            static frontend (search, plate thread, comment form)
+public/            static frontend (landing, auth modal, search, plate thread)
   index.html        all UI + logic, loads @supabase/supabase-js from a CDN
   config.js          Supabase project URL + publishable key (safe to expose —
                       access is controlled by RLS, not by keeping this secret)
-supabase/migrations/ the schema, as a single SQL file (tables, RLS, triggers)
+supabase/migrations/ the schema, as SQL files (tables, RLS, triggers, auth)
 vercel.json          serves public/ as a static site, no build step
 .github/workflows/    deploys the frontend to Vercel on push
 ```
 
 There's no `src/`, no API routes, no server runtime. What used to be
-backend logic now lives entirely in Postgres:
+backend logic lives entirely in Postgres:
 
-- **Rate limiting / anti-targeting** — a `SECURITY DEFINER` function
-  (`check_comment_rate_limit`) is called from the `comments` table's
-  `INSERT` policy. It has to be `SECURITY DEFINER` because it reads
-  `user_hash`, which the `anon` role is deliberately never granted
-  `SELECT` on directly.
+- **Accounts** — `profiles` (id, display_name) is populated automatically
+  by an `AFTER INSERT` trigger on `auth.users` (`handle_new_user`) when
+  someone signs up, pulling `display_name` from the signup metadata.
+- **Rate limiting / anti-targeting** — `check_comment_rate_limit(plate)`
+  is called from the `comments` table's `INSERT` policy, comparing
+  `auth.uid()` against recent posts. Since `auth.uid()` comes from a
+  verified JWT (not client input), this can be a plain function — no
+  elevated privileges needed, unlike the anonymous-era design.
 - **Plate stats** — a `BEFORE INSERT` trigger creates the `plates` row if
   it doesn't exist yet (so the FK from `comments.plate` doesn't fail),
   and an `AFTER INSERT` trigger bumps `comment_count` / `last_seen_at`.
 - **Moderation** — a `flags` table with primary key
-  `(comment_id, user_hash)` makes re-flagging a no-op (unique
-  violation); an `AFTER INSERT` trigger increments `comments.flag_count`
-  and sets `hidden = true` past a threshold. Hidden comments disappear
-  immediately because the `SELECT` policy filters `hidden = false`.
-- **No identity linking** — `user_hash` is excluded from the `SELECT`
-  column grant on `comments`, so it's never returned to any client no
-  matter what query is run against the REST API.
-
-## Anonymous identity, and its trade-off
-
-There's no server, so there's no IP address to hash. Rate limiting keys
-off a random UUID the browser generates on first visit and persists in
-`localStorage` (see `getUserHash()` in `public/index.html`). This is
-weaker than the previous server-side design: clearing site data resets
-someone's limits. That's an inherent trade-off of having zero backend —
-if this needs to be harder to evade, the next step would be Supabase
-Edge Functions checking IP/headers server-side.
-
-A second, smaller trade-off: `check_comment_rate_limit` must be
-`EXECUTE`-able by `anon` for the RLS policy to invoke it, which also
-makes it directly callable via `/rest/v1/rpc/check_comment_rate_limit`.
-It only returns a boolean (never raw counts), and calling it usefully
-requires already knowing a specific `user_hash` UUID, so the exposure is
-minimal — documented here rather than solved, since removing it would
-require moving the check into a real backend.
+  `(comment_id, user_id)` makes re-flagging a no-op (unique violation);
+  an `AFTER INSERT` trigger increments `comments.flag_count` and sets
+  `hidden = true` past a threshold. Hidden posts disappear immediately
+  because the `SELECT` policy filters `hidden = false`.
+- **Posting requires login, reading doesn't** — `anon` has no `INSERT`
+  grant at all on `comments`/`flags`/the storage bucket (not just an RLS
+  check — the grant itself doesn't exist), while `SELECT` stays open to
+  everyone so plates are browsable without an account.
 
 ## Local development
 
@@ -79,12 +72,19 @@ There's no build step. Serve `public/` with anything static, e.g.:
 npx serve public
 ```
 
+Email confirmation behavior on signup depends on the Supabase project's
+Auth settings (dashboard → Authentication → Providers → Email). The
+sign-up flow handles both cases: if a session comes back immediately,
+you're logged in; otherwise it prompts to check your email.
+
 ## Database changes
 
 Made directly against the Supabase project via the Supabase MCP
-connector / dashboard SQL editor. `supabase/migrations/` mirrors what
-was applied, for reproducibility — if you have the Supabase CLI linked
-to the project, `supabase db push` will apply it the same way.
+connector / dashboard SQL editor, and verified by simulating the
+`anon`/`authenticated` roles (with a real JWT claim for `auth.uid()`)
+directly in SQL before ever touching the frontend. `supabase/migrations/`
+mirrors what was applied, for reproducibility — if you have the Supabase
+CLI linked to the project, `supabase db push` applies it the same way.
 
 ## Deploying the frontend to Vercel
 
@@ -107,10 +107,10 @@ Actions):
 
 ## Notes on scope
 
-- No accounts/login — comments are anonymous by design.
 - Moderation is fully automated (report → auto-hide past a threshold).
   There's no admin review queue or unhide path — that's the natural
   next thing to add if abuse becomes an issue in practice.
-- Rate-limit identity is a client-side random ID, not IP-based (see
-  "Anonymous identity" above) — an inherent trade-off of running with no
-  backend at all.
+- No password reset / email change flows built yet — Supabase Auth
+  supports both, just not wired into this UI.
+- No profile-editing UI yet, though the RLS policy for it
+  (`profiles_update_own`) already exists.
