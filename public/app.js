@@ -99,8 +99,8 @@ function showPlate(plate) {
   currentPlate = plate;
   viewHome.classList.add("hidden");
   viewPlate.classList.remove("hidden");
-  plateNumber.textContent = plate;
-  $("sticky-plate").textContent = plate;
+  plateNumber.textContent = formatPlate(plate);
+  $("sticky-plate").textContent = formatPlate(plate);
   $("sticky-score").textContent = "–";
   if (location.hash.slice(1) !== plate) location.hash = plate;
   window.scrollTo({ top: 0, behavior: "instant" });
@@ -118,6 +118,11 @@ function handleHash() {
 
 function normalize(raw) {
   return (raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
+}
+
+// Display spacing for current-format UK plates (AB12CDE → AB12 CDE).
+function formatPlate(plate) {
+  return /^[A-Z]{2}\d{2}[A-Z]{3}$/.test(plate) ? `${plate.slice(0, 4)} ${plate.slice(4)}` : plate;
 }
 
 // ---------- Home: standings ----------
@@ -151,7 +156,7 @@ function renderBoard(container, rows) {
       <span class="mini-plate"></span>
       <span class="board-count"></span>
       <span class="board-score ${scoreClass}"></span>`;
-    div.querySelector(".mini-plate").textContent = row.plate;
+    div.querySelector(".mini-plate").textContent = formatPlate(row.plate);
     div.querySelector(".board-count").textContent =
       `${row.comment_count} entr${row.comment_count === 1 ? "y" : "ies"}`;
     div.querySelector(".board-score").textContent = row.reputation.score;
@@ -180,7 +185,7 @@ async function loadActivity() {
         <span class="mini-plate"></span>
         <span class="activity-preview"></span>
         <span class="activity-time"></span>`;
-      div.querySelector(".mini-plate").textContent = item.plate;
+      div.querySelector(".mini-plate").textContent = formatPlate(item.plate);
       div.querySelector(".activity-preview").textContent = item.preview;
       div.querySelector(".activity-time").textContent = formatDate(item.created_at);
       div.addEventListener("click", () => showPlate(item.plate));
@@ -221,7 +226,7 @@ searchInput.addEventListener("input", () => {
       for (const r of results) {
         const li = document.createElement("li");
         const plateSpan = document.createElement("span");
-        plateSpan.textContent = r.plate;
+        plateSpan.textContent = formatPlate(r.plate);
         const countSpan = document.createElement("span");
         countSpan.className = "muted";
         countSpan.textContent = `${r.comment_count} comment${r.comment_count === 1 ? "" : "s"}`;

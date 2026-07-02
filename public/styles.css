@@ -20,6 +20,14 @@
   font-style: normal;
   font-display: swap;
 }
+/* DIN-flavored plate lettering — the free cousin of the UK's Charles Wright */
+@font-face {
+  font-family: "PlateSans";
+  src: url("fonts/barlow-plate.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* ---------- Tokens ---------- */
 :root {
@@ -32,11 +40,13 @@
   --gold: #b08d57;
   --gold-deep: #9a7a48;
   --gold-wash: rgba(176, 141, 87, 0.12);
-  --sage: #5f7d61;
+  --sage: #2e6e4e;            /* British racing green */
   --amber: #b3720f;
   --red: #8e3b32;
-  --plate-blue: #003399;
-  --star: #ffd617;
+  --plate-blue: #012169;      /* Union Jack blue */
+  --plate-y1: #ffe565;        /* rear-plate yellow, lit */
+  --plate-y2: #fcc419;        /* rear-plate yellow, shade */
+  --font-plate: "PlateSans", "Inter", system-ui, sans-serif;
 
   /* Type scale — tracking tightens as size grows */
   --text-xs: 0.7rem;      /* kickers, caps labels · ls .22em  */
@@ -142,12 +152,13 @@ main { position: relative; z-index: 1; flex: 1; width: 100%; max-width: 980px; m
   content: ""; flex: 1; border-top: 1px solid var(--hairline-soft);
 }
 
-/* ---------- EU stars band ---------- */
-.stars {
-  display: block; width: 15px; height: 15px; margin: 0 auto 1px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cdefs%3E%3Cpolygon id='s' points='12,2.4 12.45,3.75 13.85,3.75 12.7,4.6 13.15,5.95 12,5.1 10.85,5.95 11.3,4.6 10.15,3.75 11.55,3.75' fill='%23ffd617'/%3E%3C/defs%3E%3Cuse href='%23s'/%3E%3Cuse href='%23s' transform='rotate(30 12 12)'/%3E%3Cuse href='%23s' transform='rotate(60 12 12)'/%3E%3Cuse href='%23s' transform='rotate(90 12 12)'/%3E%3Cuse href='%23s' transform='rotate(120 12 12)'/%3E%3Cuse href='%23s' transform='rotate(150 12 12)'/%3E%3Cuse href='%23s' transform='rotate(180 12 12)'/%3E%3Cuse href='%23s' transform='rotate(210 12 12)'/%3E%3Cuse href='%23s' transform='rotate(240 12 12)'/%3E%3Cuse href='%23s' transform='rotate(270 12 12)'/%3E%3Cuse href='%23s' transform='rotate(300 12 12)'/%3E%3Cuse href='%23s' transform='rotate(330 12 12)'/%3E%3C/svg%3E") center / contain no-repeat;
+/* ---------- UK identifier band ---------- */
+.uk-flag {
+  display: block; width: 18px; height: 10px; margin: 0 auto 2px;
+  border-radius: 2px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 30'%3E%3Crect width='60' height='30' fill='%23012169'/%3E%3Cpath d='M0,0 60,30 M60,0 0,30' stroke='%23fff' stroke-width='6'/%3E%3Cpath d='M0,0 60,30 M60,0 0,30' stroke='%23C8102E' stroke-width='2.6'/%3E%3Cpath d='M30,0 V30 M0,15 H60' stroke='%23fff' stroke-width='10'/%3E%3Cpath d='M30,0 V30 M0,15 H60' stroke='%23C8102E' stroke-width='6'/%3E%3C/svg%3E") center / cover no-repeat;
 }
-.plate-badge.big .stars { width: 22px; height: 22px; margin-bottom: 2px; }
+.plate-badge.big .uk-flag { width: 26px; height: 14px; margin-bottom: 3px; }
 
 /* ---------- Top bar ---------- */
 .topbar {
@@ -158,19 +169,20 @@ main { position: relative; z-index: 1; flex: 1; width: 100%; max-width: 980px; m
 }
 .logo { text-decoration: none; }
 .logo-plate {
-  background: linear-gradient(180deg, #ffffff 0%, #efece5 100%);
-  color: var(--ink);
-  font-weight: 700; letter-spacing: 2.5px; font-size: 1rem;
+  background: linear-gradient(180deg, var(--plate-y1) 0%, var(--plate-y2) 100%);
+  color: #121110;
+  font-family: var(--font-plate);
+  font-weight: 600; letter-spacing: 2.5px; font-size: 1.02rem;
   padding: 6px 14px 6px 30px; border-radius: 7px;
-  border: 1px solid rgba(22, 21, 18, 0.16);
+  border: 1px solid rgba(22, 21, 18, 0.28);
   position: relative; display: inline-block;
-  box-shadow: var(--shadow-sm), inset 0 1px 0 #fff;
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 .logo-plate .eu-band {
   position: absolute; left: 0; top: 0; bottom: 0; width: 18px;
   background: var(--plate-blue); border-radius: 6px 0 0 6px; display: block;
 }
-.logo-plate span { color: var(--gold); }
+.logo-plate span { color: var(--plate-blue); }
 .logo-plate.small { font-size: 0.82rem; padding: 4px 11px 4px 24px; letter-spacing: 2px; }
 .logo-plate.small .eu-band { width: 14px; }
 .tagline {
@@ -193,10 +205,11 @@ main { position: relative; z-index: 1; flex: 1; width: 100%; max-width: 980px; m
 }
 .hero-plate-decor {
   position: absolute; right: -60px; top: 60px; z-index: -1;
-  font-weight: 800; font-size: 4.4rem; letter-spacing: 12px; white-space: nowrap;
-  color: var(--ink);
-  background: linear-gradient(180deg, #ffffff 0%, #eae6dd 100%);
-  border: 2px solid rgba(22, 21, 18, 0.13);
+  font-family: var(--font-plate);
+  font-weight: 600; font-size: 4.4rem; letter-spacing: 10px; white-space: nowrap;
+  color: #121110;
+  background: linear-gradient(180deg, var(--plate-y1) 0%, var(--plate-y2) 100%);
+  border: 2px solid rgba(22, 21, 18, 0.2);
   border-radius: 22px; padding: 26px 48px 26px 96px;
   box-shadow: var(--shadow-lg), inset 0 3px 0 #fff, inset 0 -4px 10px rgba(22, 21, 18, 0.07);
   transform: perspective(900px) rotateY(-24deg) rotateX(8deg) rotate(3deg);
@@ -229,9 +242,9 @@ main { position: relative; z-index: 1; flex: 1; width: 100%; max-width: 980px; m
 }
 .plate-input-wrap {
   display: flex; align-items: stretch;
-  background: linear-gradient(180deg, #ffffff 0%, #f1eee7 100%);
+  background: linear-gradient(180deg, var(--plate-y1) 0%, var(--plate-y2) 100%);
   border-radius: 12px;
-  border: 1px solid rgba(22, 21, 18, 0.18);
+  border: 1px solid rgba(22, 21, 18, 0.28);
   overflow: hidden;
   box-shadow: var(--shadow-md), inset 0 1px 0 #fff;
   transition: box-shadow 0.25s var(--ease), transform 0.25s var(--ease);
@@ -245,11 +258,11 @@ main { position: relative; z-index: 1; flex: 1; width: 100%; max-width: 980px; m
 .plate-badge.big { font-size: 0.8rem; padding: 0 16px; border-radius: 13px 0 0 13px; }
 .plate-input-wrap input {
   border: none; outline: none; background: transparent;
-  color: var(--ink); font-size: 1.7rem; font-weight: 700;
-  letter-spacing: 5px; padding: 14px 20px; width: 250px;
-  text-transform: uppercase; font-family: var(--font-ui);
+  color: #121110; font-size: 1.7rem; font-weight: 600;
+  letter-spacing: 4px; padding: 14px 20px; width: 250px;
+  text-transform: uppercase; font-family: var(--font-plate);
 }
-.plate-input-wrap input::placeholder { color: #c6c1b6; }
+.plate-input-wrap input::placeholder { color: rgba(18, 17, 16, 0.32); }
 
 .suggestions {
   list-style: none; max-width: 430px; margin: 14px 0 0;
@@ -315,12 +328,13 @@ main { position: relative; z-index: 1; flex: 1; width: 100%; max-width: 980px; m
   color: var(--gold-deep); min-width: 18px; text-align: center; font-size: 1.05rem;
 }
 .mini-plate {
-  background: linear-gradient(180deg, #ffffff 0%, #efece5 100%);
-  border: 1px solid rgba(22, 21, 18, 0.16);
-  color: var(--ink); font-weight: 700; letter-spacing: 1.5px;
-  padding: 3px 9px 3px 17px; border-radius: 5px; font-size: 0.84rem;
+  background: linear-gradient(180deg, var(--plate-y1) 0%, var(--plate-y2) 100%);
+  border: 1px solid rgba(22, 21, 18, 0.26);
+  color: #121110; font-family: var(--font-plate);
+  font-weight: 600; letter-spacing: 1.5px;
+  padding: 3px 9px 3px 17px; border-radius: 5px; font-size: 0.88rem;
   white-space: nowrap; position: relative;
-  box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgba(22, 21, 18, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 1px 2px rgba(22, 21, 18, 0.07);
 }
 .mini-plate::before {
   content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 9px;
@@ -388,15 +402,15 @@ main { position: relative; z-index: 1; flex: 1; width: 100%; max-width: 980px; m
 .plate-display {
   position: relative;
   display: inline-flex; align-items: stretch;
-  background: linear-gradient(180deg, #ffffff 0%, #e9e5dc 100%);
-  border: 2px solid rgba(22, 21, 18, 0.16);
+  background: linear-gradient(180deg, var(--plate-y1) 0%, var(--plate-y2) 100%);
+  border: 2px solid rgba(22, 21, 18, 0.28);
   border-radius: 16px; overflow: hidden;
   box-shadow:
     var(--shadow-lg),
-    inset 0 3px 0 #fff,
-    inset 0 -4px 10px rgba(22, 21, 18, 0.08),
-    inset 0 0 0 5px rgba(255, 255, 255, 0.55),
-    inset 0 0 0 6px rgba(22, 21, 18, 0.05);
+    inset 0 3px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -4px 10px rgba(22, 21, 18, 0.1),
+    inset 0 0 0 5px rgba(255, 244, 180, 0.55),
+    inset 0 0 0 6px rgba(22, 21, 18, 0.07);
   transform: rotateY(-13deg) rotateX(5deg);
   transition: transform 0.5s var(--ease);
 }
@@ -415,9 +429,10 @@ main { position: relative; z-index: 1; flex: 1; width: 100%; max-width: 980px; m
 }
 .plate-number {
   position: relative;
-  color: var(--ink); font-size: clamp(2.2rem, 6vw, 3.4rem); font-weight: 800;
-  letter-spacing: 0.18em; padding: 20px 44px 20px 40px;
-  text-shadow: 0 1px 0 #fff, 0 -1px 1px rgba(22, 21, 18, 0.22);
+  color: #121110; font-family: var(--font-plate);
+  font-size: clamp(2.2rem, 6vw, 3.4rem); font-weight: 600;
+  letter-spacing: 0.12em; padding: 20px 44px 20px 40px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55), 0 -1px 1px rgba(22, 21, 18, 0.3);
 }
 /* Plate rivets flanking the number */
 .plate-number::before, .plate-number::after {

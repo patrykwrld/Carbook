@@ -7,8 +7,26 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Behind a reverse proxy (Fly, Railway, nginx…) set TRUST_PROXY so the
+// rate limiter sees real client IPs instead of the proxy's.
+if (process.env.TRUST_PROXY) {
+  app.set("trust proxy", Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY === "true");
+}
+app.disable("x-powered-by");
+
+app.use((req, res, next) => {
+  res.set({
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+  });
+  next();
+});
 app.use(express.json({ limit: "1mb" }));
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "public"), { maxAge: "1h", setHeaders: (res, p) => {
+  if (p.endsWith(".woff2")) res.set("Cache-Control", "public, max-age=31536000, immutable");
+} }));
 
 // ---------- Helpers ----------
 
@@ -22,6 +40,12 @@ function normalizePlate(raw) {
   const plate = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
   if (plate.length < 2 || plate.length > 10) return null;
   return plate;
+}
+
+// All-ages board: mask common profanity while keeping the message readable.
+const PROFANITY = /\b(fuck\w*|shit\w*|bitch\w*|asshole\w*|cunt\w*|dick(?:head)?s?|bastard\w*|wanker\w*|twat\w*|prick\w*|bollocks|piss(?:ed|es)?)\b/gi;
+function maskProfanity(text) {
+  return text.replace(PROFANITY, (word) => word[0] + "*".repeat(word.length - 2) + word[word.length - 1]);
 }
 
 // Simple fixed-window rate limiter (per IP, per bucket), no extra deps.
@@ -279,9 +303,12 @@ app.post("/api/plates/:plate/comments", rateLimit("comment", 5, 60_000), (req, r
   const parsedPhoto = parsePhoto(photo);
   if (parsedPhoto.error) return res.status(400).json({ error: parsedPhoto.error });
 
-  const cleanAuthor = typeof author === "string" && author.trim() ? author.trim().slice(0, 40) : "Anonymous";
+  const cleanAuthor = maskProfanity(
+    typeof author === "string" && author.trim() ? author.trim().slice(0, 40) : "Anonymous"
+  );
+  const cleanText = maskProfanity(text.trim());
   const cleanTag = VALID_TAGS.has(tag) ? tag : "general";
-  const cleanCountry = typeof country === "string" && /^[A-Z]{1,3}$/.test(country) ? country : "PL";
+  const cleanCountry = typeof country === "string" && /^[A-Z]{1,3}$/.test(country) ? country : "GB";
 
   const insert = db.transaction(() => {
     db.prepare("INSERT INTO plates (plate, country) VALUES (?, ?) ON CONFLICT(plate) DO NOTHING").run(
@@ -291,7 +318,7 @@ app.post("/api/plates/:plate/comments", rateLimit("comment", 5, 60_000), (req, r
     const plateRow = db.prepare("SELECT id FROM plates WHERE plate = ?").get(plate);
     const result = db
       .prepare("INSERT INTO comments (plate_id, author, text, tag, photo, photo_mime) VALUES (?, ?, ?, ?, ?, ?)")
-      .run(plateRow.id, cleanAuthor, text.trim(), cleanTag, parsedPhoto.buffer, parsedPhoto.mime);
+      .run(plateRow.id, cleanAuthor, cleanText, cleanTag, parsedPhoto.buffer, parsedPhoto.mime);
     return result.lastInsertRowid;
   });
 
@@ -337,6 +364,26 @@ app.post("/api/comments/:id/report", rateLimit("report", 10, 60_000), (req, res)
   res.json({ id, hidden: row.reports >= REPORT_HIDE_THRESHOLD });
 });
 
-app.listen(PORT, () => {
+// Liveness probe for orchestrators and uptime monitors.
+app.get("/healthz", (req, res) => {
+  try {
+    db.prepare("SELECT 1").get();
+    res.json({ ok: true });
+  } catch {
+    res.status(503).json({ ok: false });
+  }
+});
+
+const server = app.listen(PORT, () => {
   console.log(`Carbook running at http://localhost:${PORT}`);
 });
+
+function shutdown() {
+  server.close(() => {
+    db.close();
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(1), 5000).unref();
+}
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);

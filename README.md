@@ -31,12 +31,22 @@ For development with auto-reload:
 npm run dev
 ```
 
+### Deploying
+
+```bash
+docker build -t carbook .
+docker run -p 3000:3000 -v carbook-data:/data carbook
+```
+
+Or on any Node host: `NODE_ENV=production TRUST_PROXY=1 node server.js`. A `GET /healthz` liveness probe is available for orchestrators and uptime monitors; the server shuts down gracefully on SIGTERM.
+
 ## Configuration
 
-| Env var   | Default        | Description               |
-|-----------|----------------|---------------------------|
-| `PORT`    | `3000`         | HTTP port                 |
-| `DB_PATH` | `./carbook.db` | SQLite database file path |
+| Env var       | Default        | Description                                             |
+|---------------|----------------|---------------------------------------------------------|
+| `PORT`        | `3000`         | HTTP port                                               |
+| `DB_PATH`     | `./carbook.db` | SQLite database file path                               |
+| `TRUST_PROXY` | unset          | Set to `1` (hop count) or `true` behind a reverse proxy so rate limiting sees real client IPs |
 
 ## API
 
@@ -57,7 +67,9 @@ npm run dev
 
 - **Backend:** Node.js + Express + better-sqlite3 (single file DB, WAL mode)
 - **Frontend:** vanilla HTML/CSS/JS single-page app — no build step, hand-rolled accessible SVG charts
-- **Typography & identity:** self-hosted variable fonts — Fraunces (roman *and* true italic, with SOFT/WONK axes on display sizes) + Inter; `font-synthesis: none`; old-style figures in editorial text, tabular lining figures for scores; custom stroke-icon set, 12-star EU plate band, stamped-plate renders with rivets and a shine sweep
+- **Typography & identity:** self-hosted fonts — Fraunces (roman *and* true italic, SOFT/WONK axes on display sizes), Inter for UI, and Barlow as the DIN-style plate lettering; `font-synthesis: none`; old-style figures in editorial text, tabular lining figures for scores; custom stroke-icon set
+- **British plates:** rear-plate yellow renders with the Union Jack UK identifier band, stamped rivets, shine sweep, and UK display spacing (`AB12 CDE`)
+- **All-ages & production ready:** server-side profanity masking, community reporting with auto-hide, security headers, health probe, graceful shutdown, Dockerfile included
 - **Cost:** runs comfortably on any free tier (a single small VM or container)
 
 ## Responsible use
