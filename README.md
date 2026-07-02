@@ -56,7 +56,8 @@ npm run dev
 ## Tech stack
 
 - **Backend:** Node.js + Express + better-sqlite3 (single file DB, WAL mode)
-- **Frontend:** vanilla HTML/CSS/JS single-page app — no build step, self-hosted variable fonts (Fraunces + Inter), hand-rolled accessible SVG charts
+- **Frontend:** vanilla HTML/CSS/JS single-page app — no build step, hand-rolled accessible SVG charts
+- **Typography & identity:** self-hosted variable fonts — Fraunces (roman *and* true italic, with SOFT/WONK axes on display sizes) + Inter; `font-synthesis: none`; old-style figures in editorial text, tabular lining figures for scores; custom stroke-icon set, 12-star EU plate band, stamped-plate renders with rivets and a shine sweep
 - **Cost:** runs comfortably on any free tier (a single small VM or container)
 
 ## Responsible use

@@ -45,6 +45,20 @@ const CHART = {
 let currentPlate = null;
 let pendingPhoto = null; // data URL awaiting submit
 
+// Single-stroke car illustration for empty states.
+function emptyState(text) {
+  const div = document.createElement("div");
+  div.className = "empty-state";
+  div.innerHTML = `
+    <svg viewBox="0 0 120 48" aria-hidden="true">
+      <path d="M8 36h8m16 0h32m16 0h8M20 36a6 6 0 1 0 12 0 6 6 0 0 0-12 0Zm50 0a6 6 0 1 0 12 0 6 6 0 0 0-12 0ZM10 36v-7c0-2.4 1.4-4.2 4.2-4.9L28 21l9-8.6c1.4-1.3 3-2 5-2h16c2.2 0 4.2 1 5.5 2.8l5 6.8 13.3 3c2.8.6 4.2 2.6 4.2 5V36"
+            fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <p></p>`;
+  div.querySelector("p").textContent = text;
+  return div;
+}
+
 // ---------- API ----------
 
 async function api(path, options) {
@@ -59,7 +73,8 @@ async function api(path, options) {
 function toast(message) {
   const el = document.createElement("div");
   el.className = "toast";
-  el.textContent = message;
+  el.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>';
+  el.appendChild(document.createTextNode(message));
   $("toast-container").appendChild(el);
   setTimeout(() => {
     el.classList.add("out");
@@ -75,6 +90,7 @@ function showHome() {
   viewPlate.classList.add("hidden");
   viewHome.classList.remove("hidden");
   if (location.hash) history.pushState(null, "", location.pathname);
+  window.scrollTo({ top: 0, behavior: "instant" });
   loadActivity();
   loadLeaderboards();
 }
@@ -87,6 +103,7 @@ function showPlate(plate) {
   $("sticky-plate").textContent = plate;
   $("sticky-score").textContent = "–";
   if (location.hash.slice(1) !== plate) location.hash = plate;
+  window.scrollTo({ top: 0, behavior: "instant" });
   insights.open = false;
   insightsLoaded = false;
   resetReputation();
@@ -120,7 +137,7 @@ async function loadLeaderboards() {
 
 function renderBoard(container, rows) {
   if (!rows.length) {
-    container.innerHTML = '<p class="board-empty">Nothing here yet.</p>';
+    container.replaceChildren(emptyState("The road is quiet here."));
     return;
   }
   container.innerHTML = "";
@@ -150,7 +167,7 @@ async function loadActivity() {
   try {
     const items = await api("/api/activity");
     if (!items.length) {
-      activityList.innerHTML = '<p class="muted">No comments yet — be the first to look up a plate.</p>';
+      activityList.replaceChildren(emptyState("No entries yet — be the first to look up a plate."));
       return;
     }
     activityList.innerHTML = "";
@@ -490,20 +507,22 @@ function categoryChart(tags) {
 
 function renderComments(comments) {
   if (!comments.length) {
-    commentsList.innerHTML = '<p class="muted">No comments yet. Be the first to leave feedback.</p>';
+    commentsList.replaceChildren(emptyState("No entries yet — the road is quiet. Be the first to add one."));
     return;
   }
   commentsList.innerHTML = "";
   comments.forEach((c, i) => {
-    const el = renderComment(c);
+    // Top-voted visible comment leads as the "entry of note".
+    const noted = i === 0 && !c.hidden && c.votes > 0;
+    const el = renderComment(c, noted);
     el.style.animationDelay = `${Math.min(i, 8) * 60}ms`;
     commentsList.appendChild(el);
   });
 }
 
-function renderComment(c) {
+function renderComment(c, noted = false) {
   const div = document.createElement("div");
-  div.className = "comment" + (c.hidden ? " hidden-comment" : "");
+  div.className = "comment" + (c.hidden ? " hidden-comment" : "") + (noted ? " noted" : "");
 
   const voteCol = document.createElement("div");
   voteCol.className = "vote-col";
@@ -547,6 +566,12 @@ function renderComment(c) {
 
   const meta = document.createElement("div");
   meta.className = "comment-meta";
+  if (noted) {
+    const notedKicker = document.createElement("span");
+    notedKicker.className = "noted-kicker";
+    notedKicker.textContent = "ENTRY OF NOTE";
+    meta.appendChild(notedKicker);
+  }
   const author = document.createElement("span");
   author.className = "comment-author";
   author.textContent = c.author;
@@ -583,7 +608,8 @@ function renderComment(c) {
     const countFor = (r) => (r && r[emoji] ? ` ${r[emoji]}` : "");
     btn.textContent = emoji + countFor(c.reactions);
     btn.addEventListener("click", async () => {
-      btn.classList.add("reacted");
+      btn.classList.add("reacted", "pop");
+      btn.addEventListener("animationend", () => btn.classList.remove("pop"), { once: true });
       try {
         const data = await api(`/api/comments/${c.id}/react`, {
           method: "POST",
@@ -602,7 +628,7 @@ function renderComment(c) {
   // Two-tap report: first tap arms it, second within 3s confirms.
   const report = document.createElement("button");
   report.className = "report-btn";
-  report.textContent = "🚩 Report";
+  report.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#i-flag"/></svg>Report';
   let armed = false;
   let disarmTimer;
   report.addEventListener("click", async () => {
@@ -613,7 +639,7 @@ function renderComment(c) {
       disarmTimer = setTimeout(() => {
         armed = false;
         report.classList.remove("confirming");
-        report.textContent = "🚩 Report";
+        report.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#i-flag"/></svg>Report';
       }, 3000);
       return;
     }
