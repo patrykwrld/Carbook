@@ -67,7 +67,7 @@ Or on any Node host: `NODE_ENV=production TRUST_PROXY=1 node server.js`. A `GET 
 
 - **Backend:** Node.js + Express + better-sqlite3 (single file DB, WAL mode)
 - **Frontend:** vanilla HTML/CSS/JS single-page app — no build step, hand-rolled accessible SVG charts
-- **Typography & identity:** self-hosted fonts — Fraunces (roman *and* true italic, SOFT/WONK axes on display sizes), Inter for UI, and Barlow as the DIN-style plate lettering; `font-synthesis: none`; old-style figures in editorial text, tabular lining figures for scores; custom stroke-icon set
+- **Typography & identity:** self-hosted fonts — Space Grotesk for display, Inter for UI, and Barlow as the DIN-style plate lettering (~93 KB total); `font-synthesis: none`; tabular figures for scores; custom stroke-icon set; dark one-accent design system built around the plate yellow
 - **British plates:** rear-plate yellow renders with the Union Jack UK identifier band, stamped rivets, shine sweep, and UK display spacing (`AB12 CDE`)
 - **All-ages & production ready:** server-side profanity masking, community reporting with auto-hide, security headers, health probe, graceful shutdown, Dockerfile included
 - **Cost:** runs comfortably on any free tier (a single small VM or container)

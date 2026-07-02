@@ -33,13 +33,14 @@ const TAG_META = {
 const REACTIONS = ["🔥", "👍", "😂", "😡"];
 
 // Chart palette — validated with the dataviz six-checks script on white.
+// Validated with the dataviz six-checks script against the dark surface.
 const CHART = {
-  bar: "#a8752f",
-  positive: "#2a78d6",
-  negative: "#e34948",
-  neutral: "#e5e1d7",
-  grid: "#ddd8cc",
-  ink: "#8c877d",
+  bar: "#c98500",
+  positive: "#3987e5",
+  negative: "#e66767",
+  neutral: "#383835",
+  grid: "#2c2c2a",
+  ink: "#9b9da4",
 };
 
 let currentPlate = null;
@@ -399,7 +400,7 @@ function sentimentChart(sentiment) {
       const lbl = svgEl("text", {
         x: x + w / 2, y: 22, "text-anchor": "middle",
         "font-size": "12", "font-weight": "600",
-        fill: e.key === "neutral" ? "#52514e" : "#ffffff",
+        fill: e.key === "neutral" ? "#c3c2b7" : "#ffffff",
       });
       lbl.textContent = e.value;
       svg.appendChild(lbl);
