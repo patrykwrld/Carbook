@@ -5,6 +5,19 @@ import { PlateFeed, type FeedComment } from "@/components/PlateFeed";
 import { FadeUp } from "@/components/motion";
 import { normalizePlate } from "@/lib/plates";
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ country: string; plate: string }>;
+}) {
+  const { country, plate } = await params;
+  const normalized = normalizePlate(decodeURIComponent(plate));
+  return {
+    title: `${decodeURIComponent(country).toUpperCase()} ${normalized} — Carbook`,
+    description: `What the road says about ${normalized}.`,
+  };
+}
+
 export default async function PlatePage({
   params,
 }: {
