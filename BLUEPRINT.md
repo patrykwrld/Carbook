@@ -23,16 +23,22 @@
 
 ---
 
-## 2. Verified connector state (checked 2026-07-02)
+## 2. Provisioned infrastructure (Phase 0 done 2026-07-02)
 
 Both MCP connectors are authenticated and working. Do **not** ask the user to set up accounts.
 
-| Connector | Verified fact |
+| Fact | Value |
 |---|---|
-| Supabase | Org: `pepe30kg's projects` (`vercel_icfg_i6dg9uiY4uN2siZmAfcGnTGI`). No project exists yet — one must be created. |
-| Vercel | Teams: `patoteam` (`team_0YEHgDwjOKsVnRX7OzCY43KP`), `SF` (`team_dbfppKy3BuELSJL7v5v8eEEG`), `pepe30kg's projects` (`team_O1LzWIK2xJjt6ICEj7hqmd8k`). |
+| Supabase org | `pepe30kg's projects` (`vercel_icfg_i6dg9uiY4uN2siZmAfcGnTGI`) |
+| Supabase project | `carbook` — ref `ncjuttxaxbfbafkocemx`, us-east-1, Postgres 17 (pre-existing project reused; free-tier limit blocks creating new ones) |
+| API URL | `https://ncjuttxaxbfbafkocemx.supabase.co` |
+| Anon key | via `mcp__Supabase__get_publishable_keys` (legacy `anon` JWT key in use for `@supabase/ssr` compatibility) |
+| Schema | Migration `reset_to_blueprint_schema` applied: §4 schema live, prior prototype schema (empty) dropped. Security advisors: 0 findings. RLS smoke test passed (anon read OK, anon write rejected). |
+| Storage | Bucket `car-photos` (public read, 5 MB, jpeg/png/webp) — repurposed from empty prototype bucket |
+| Realtime | `public.comments` added to `supabase_realtime` publication |
+| Vercel deploy target | Team `pepe30kg's projects` (`team_O1LzWIK2xJjt6ICEj7hqmd8k`), project `carbook` |
 
-**Default deploy target:** team `pepe30kg's projects` (matches the Supabase org, which is Vercel-managed). Confirm with the user only if they object.
+⚠️ Sandbox note: this container's network policy blocks direct HTTPS to `*.supabase.co` — use MCP tools (`execute_sql` with `set local role anon` for RLS tests), not curl.
 
 ---
 
