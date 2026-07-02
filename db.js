@@ -29,8 +29,24 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS reactions (
+    comment_id INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
+    emoji      TEXT NOT NULL,
+    count      INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (comment_id, emoji)
+  );
+
   CREATE INDEX IF NOT EXISTS idx_comments_plate ON comments(plate_id, created_at DESC);
   CREATE INDEX IF NOT EXISTS idx_plates_plate ON plates(plate);
 `);
+
+// In-place migration for v1 databases that predate photo support.
+const commentCols = db.prepare("SELECT name FROM pragma_table_info('comments')").all().map((c) => c.name);
+if (!commentCols.includes("photo")) {
+  db.exec("ALTER TABLE comments ADD COLUMN photo BLOB");
+}
+if (!commentCols.includes("photo_mime")) {
+  db.exec("ALTER TABLE comments ADD COLUMN photo_mime TEXT");
+}
 
 export default db;

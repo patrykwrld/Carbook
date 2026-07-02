@@ -4,27 +4,29 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Carbook — feedback for every plate</title>
+  <link rel="preload" href="fonts/fraunces-var.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="styles.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>" />
 </head>
 <body>
   <header class="topbar">
-    <a class="logo" href="#" id="logo-link">
-      <span class="logo-plate">CAR<span>BOOK</span></span>
+    <a class="logo" href="#" id="logo-link" aria-label="Carbook home">
+      <span class="logo-plate"><i class="eu-band" aria-hidden="true"></i>CAR<span>BOOK</span></span>
     </a>
-    <p class="tagline">Leave feedback for any car on the road</p>
+    <p class="tagline">Feedback for every plate on the road</p>
   </header>
 
   <main>
     <!-- HOME VIEW -->
     <section id="view-home" class="view">
       <div class="hero">
-        <h1>Seen something on the road?</h1>
-        <p>Look up a registration plate and read — or leave — feedback from other drivers.</p>
+        <h1>Seen something<br /><em>on the road?</em></h1>
+        <p class="hero-sub">Look up a registration plate and read — or leave — feedback from other drivers.</p>
 
         <form id="search-form" class="plate-search" autocomplete="off">
           <div class="plate-input-wrap">
-            <span class="plate-badge">EU</span>
+            <span class="plate-badge" aria-hidden="true"><i>★</i>EU</span>
             <input id="search-input" type="text" placeholder="ABC 1234" maxlength="12"
                    spellcheck="false" aria-label="Registration plate" />
           </div>
@@ -33,27 +35,68 @@
         <ul id="search-suggestions" class="suggestions hidden"></ul>
       </div>
 
-      <div class="feed">
-        <h2>Recent activity</h2>
-        <div id="activity-list" class="activity-list">
-          <p class="muted">No comments yet — be the first to look up a plate.</p>
-        </div>
+      <div class="home-grid">
+        <section class="panel leaderboard-panel" aria-labelledby="lb-heading">
+          <div class="panel-head">
+            <h2 id="lb-heading">Leaderboards</h2>
+            <div class="tabs" role="tablist" aria-label="Leaderboard categories">
+              <button class="tab active" role="tab" aria-selected="true" data-board="praised">🏆 Praised</button>
+              <button class="tab" role="tab" aria-selected="false" data-board="reported">⚠️ Reported</button>
+              <button class="tab" role="tab" aria-selected="false" data-board="trending">📈 Trending</button>
+            </div>
+          </div>
+          <div id="leaderboard-list" class="leaderboard-list" role="tabpanel">
+            <div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="feed-heading">
+          <div class="panel-head"><h2 id="feed-heading">Recent activity</h2></div>
+          <div id="activity-list" class="activity-list">
+            <div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div>
+          </div>
+        </section>
       </div>
     </section>
 
     <!-- PLATE VIEW -->
     <section id="view-plate" class="view hidden">
-      <button class="btn btn-ghost back-btn" id="back-btn">&larr; Back to search</button>
+      <div class="plate-toolbar">
+        <button class="btn btn-ghost" id="back-btn">&larr; Back</button>
+        <button class="btn btn-ghost" id="share-btn">Share ↗</button>
+      </div>
 
       <div class="plate-header">
         <div class="plate-display">
-          <span class="plate-badge big">EU</span>
+          <span class="plate-badge big" aria-hidden="true"><i>★</i>EU</span>
           <span id="plate-number" class="plate-number">ABC1234</span>
         </div>
-        <div id="plate-stats" class="plate-stats"></div>
+
+        <div class="reputation" id="reputation">
+          <svg class="rep-ring" viewBox="0 0 96 96" width="96" height="96" role="img" aria-label="Reputation score">
+            <circle class="rep-track" cx="48" cy="48" r="42" />
+            <circle class="rep-arc" id="rep-arc" cx="48" cy="48" r="42" />
+            <text id="rep-score" x="48" y="46" text-anchor="middle">–</text>
+            <text class="rep-of" x="48" y="62" text-anchor="middle">/ 100</text>
+          </svg>
+          <div class="rep-meta">
+            <span id="rep-label" class="rep-label">Reputation</span>
+            <span id="plate-stats" class="plate-stats"></span>
+          </div>
+        </div>
       </div>
 
-      <form id="comment-form" class="comment-form">
+      <details class="panel insights" id="insights">
+        <summary>
+          <span>Insights</span>
+          <span class="chevron" aria-hidden="true">›</span>
+        </summary>
+        <div id="insights-body" class="insights-body">
+          <p class="muted">Loading…</p>
+        </div>
+      </details>
+
+      <form id="comment-form" class="panel comment-form">
         <h3>Add your feedback</h3>
         <div class="form-row">
           <input id="comment-author" type="text" placeholder="Your name (optional)" maxlength="40" />
@@ -67,6 +110,16 @@
         </div>
         <textarea id="comment-text" rows="3" maxlength="500"
                   placeholder="What happened? Keep it factual and civil — comments can be reported and hidden."></textarea>
+        <div class="photo-row">
+          <label class="btn btn-ghost photo-label">
+            📷 Add photo
+            <input id="photo-input" type="file" accept="image/*" hidden />
+          </label>
+          <div id="photo-preview" class="photo-preview hidden">
+            <img id="photo-preview-img" alt="Photo preview" />
+            <button type="button" id="photo-remove" class="photo-remove" aria-label="Remove photo">✕</button>
+          </div>
+        </div>
         <div class="form-footer">
           <span id="char-count" class="muted">0 / 500</span>
           <button type="submit" class="btn btn-primary">Post comment</button>
@@ -81,6 +134,11 @@
   <footer>
     <p>Carbook is a community board. Comments reflect their authors' views. Abusive content can be reported and is hidden automatically.</p>
   </footer>
+
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+  <div id="lightbox" class="lightbox hidden" role="dialog" aria-label="Photo viewer">
+    <img id="lightbox-img" alt="Comment photo" />
+  </div>
 
   <script src="app.js"></script>
 </body>
